@@ -1,0 +1,47 @@
+@use '@/styles/theme.scss' as *;
+
+.bottom-nav-float {
+  position: fixed;
+  bottom: 32px;
+  left: 24px;
+  right: 24px;
+  z-index: 90;
+  background: $nav-bg;
+  border-radius: 48px;
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  box-shadow: 0 16px 64px rgba(62, 36, 16, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0 8px;
+}
+
+.nav-icon {
+  font-size: 34px;
+  line-height: 1.2;
+  opacity: 0.55;
+}
+
+.nav-label {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+}
+
+.nav-item.active .nav-icon {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+.nav-item.active .nav-label {
+  color: $nav-active;
+  font-weight: 600;
+}

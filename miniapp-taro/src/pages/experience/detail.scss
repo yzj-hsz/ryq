@@ -1,0 +1,28 @@
+@forward '@/styles/theme.scss';
+@use '@/styles/theme.scss' as *;
+
+.sub-page { min-height: 100vh; background: linear-gradient(180deg, #f8f2eb, $app-bg 260px); }
+.back {
+  display: inline-flex;
+  margin: 24px 32px 0;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  font-size: 28px;
+  color: $app-text;
+  box-shadow: 0 8px 18px rgba(44, 24, 16, 0.06);
+}
+.scroll { padding-bottom: 64px; box-sizing: border-box; }
+.cover { width: calc(100% - 64px); height: 420px; margin: 20px 32px 0; border-radius: 28px; box-shadow: 0 16px 32px rgba(44, 24, 16, 0.08); }
+.body { padding: 32px; }
+.title { font-size: 40px; font-weight: 800; color: $app-text; display: block; }
+.meta { font-size: 24px; color: $app-muted; margin-top: 12px; display: block; }
+.summary { font-size: 28px; color: $app-text; margin-top: 20px; line-height: 1.75; display: block; }
+.card {
+  margin-top: 22px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 24px;
+  box-shadow: 0 12px 28px rgba(44, 24, 16, 0.05);
+}
+.ch { font-size: 30px; font-weight: 700; margin-bottom: 14px; display: block; color: $app-text; }

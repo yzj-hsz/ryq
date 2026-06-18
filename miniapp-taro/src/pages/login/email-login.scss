@@ -1,0 +1,152 @@
+@use '@/styles/theme.scss' as *;
+
+.email-login-page {
+  min-height: 100vh;
+  padding: 24px 40px 80px;
+  box-sizing: border-box;
+  background: $app-bg;
+}
+
+.back-btn {
+  font-size: 30px;
+  color: $app-text;
+  padding: 12px 0 20px;
+}
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0 28px;
+}
+
+.logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 28px;
+  box-shadow: 0 10px 28px rgba(184, 118, 62, 0.16);
+}
+
+.slogan-main {
+  display: block;
+  margin-top: 18px;
+  font-size: 38px;
+  font-weight: 700;
+  color: $app-text;
+}
+
+.slogan-sub {
+  display: block;
+  margin-top: 10px;
+  font-size: 22px;
+  line-height: 1.6;
+  color: $app-muted;
+}
+
+.form-container {
+  background: #fff;
+  border-radius: 28px;
+  padding: 36px 28px 28px;
+  margin-bottom: 36px;
+  border: 2px solid rgba(232, 223, 211, 0.85);
+  box-shadow: 0 10px 30px rgba(44, 24, 16, 0.05);
+}
+
+.label {
+  display: block;
+  font-size: 26px;
+  color: $app-text;
+  font-weight: 600;
+  margin: 22px 0 12px;
+}
+
+.label:first-child { margin-top: 0; }
+
+.field-input {
+  width: 100%;
+  height: 88px;
+  padding: 0 24px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  border: 2px solid $app-border;
+  background: #fff;
+  color: $app-text;
+  font-size: 28px;
+}
+
+.field-placeholder {
+  color: #ad9d90;
+}
+
+.code-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-top: 24px;
+}
+
+.code-input-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.code-actions {
+  display: flex;
+  align-items: center;
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.code-input {
+  width: 100%;
+}
+
+.code-btn {
+  width: 100%;
+  height: 88px;
+  line-height: 88px;
+  border-radius: 20px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #b8763e, #9a5f2e);
+  box-shadow: 0 8px 20px rgba(184, 118, 62, 0.24);
+  flex-shrink: 0;
+}
+
+.code-btn[disabled] {
+  color: rgba(255, 255, 255, 0.9);
+  background: #cbb8a9;
+  box-shadow: none;
+}
+
+.helper-text {
+  display: block;
+  margin-top: 18px;
+  font-size: 20px;
+  line-height: 1.6;
+  color: $app-muted;
+}
+
+.btn-main {
+  width: 100% !important;
+  height: 96px !important;
+  border-radius: 48px !important;
+  font-size: 30px !important;
+  font-weight: 600 !important;
+  line-height: 96px;
+  margin-top: 56px;
+}
+
+.guest-link-wrap {
+  margin-top: 40px;
+  text-align: center;
+  padding: 20px;
+}
+
+.guest-link {
+  font-size: 26px;
+  color: $app-primary;
+  text-decoration: underline;
+}

@@ -1,0 +1,50 @@
+@use './styles/theme.scss' as *;
+
+page {
+  background-color: $app-bg;
+  color: $app-text;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+}
+
+/* NutUI 主题变量 — 对齐饶有趣暖色公益风 */
+:root,
+page {
+  --nutui-color-primary: #{$app-primary};
+  --nutui-color-primary-stop-1: #b8763e;
+  --nutui-color-primary-stop-2: #9a5f2e;
+  --nutui-button-primary-background-color: linear-gradient(135deg, #3d6b50, #6b9e78);
+  --nutui-button-border-radius: 48px;
+  --nutui-input-border-radius: 12px;
+  --nutui-font-size-2: 28px;
+  --nutui-gray-1: #{$app-muted};
+  --nutui-gray-7: #{$app-border};
+  --nutui-black: #{$app-text};
+}
+
+.tab-scroll {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bottom-pad {
+  height: 200px;
+}
+
+.card {
+  background: $app-surface;
+  border-radius: 24px;
+  padding: 28px;
+  margin-bottom: 24px;
+  border: 2px solid $app-border;
+}
+
+.section-title .t {
+  font-size: 34px;
+  font-weight: 700;
+  color: $app-text;
+}
+
+.section-title {
+  padding: 0 32px 24px;
+}

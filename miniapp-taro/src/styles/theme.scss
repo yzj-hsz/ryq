@@ -1,0 +1,32 @@
+$app-bg: #fbf5ed;
+$app-surface: #ffffff;
+$app-primary: #b8763e;
+$app-text: #2c1810;
+$app-muted: #7a6b5e;
+$app-border: #e8dfd3;
+$nav-bg: #3e2410;
+$nav-active: #e8c068;
+$tag-heritage-bg: #fdf0ed;
+$tag-heritage-text: #c94d4d;
+$tag-handmade-bg: #f0f5f1;
+$tag-handmade-text: #3d6b50;
+$tag-original-bg: #fbf5ed;
+$tag-original-text: #b8763e;
+$tag-farmer-bg: #eef1f5;
+$tag-farmer-text: #5b6e8a;
+$tag-disability-bg: #f5e8d4;
+$tag-disability-text: #9a5f2e;
+
+@mixin header-gradient {
+  background: linear-gradient(135deg, #b8763e 0%, #9a5f2e 50%, #7d4a24 100%);
+}
+
+@mixin rz-header-gradient {
+  background: linear-gradient(135deg, #7d4a24 0%, #5e371a 50%, #3e2410 100%);
+}
+
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

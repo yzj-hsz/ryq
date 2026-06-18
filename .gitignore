@@ -1,0 +1,42 @@
+# Python / 后端
+backend/.env
+backend/data.db
+backend/*.db
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+backend/.pytest_cache/
+backend/2.31.0
+backend/raoyouqu/static/uploads/*
+!backend/raoyouqu/static/uploads/.gitkeep
+
+# Node / 前端
+node_modules/
+miniapp-taro/node_modules/
+admin-web/node_modules/
+miniapp-taro/dist/
+miniapp-taro/unpackage/
+admin-web/dist/
+.DS_Store
+*.tsbuildinfo
+*.swc/
+.swc/
+miniapp-taro/.pai/
+miniapp-taro/pai-preview-server.lock
+miniapp-taro/pai.log
+
+# 本地调试 / 工具
+.dbg/
+.pai/
+*.ndjson
+*.log
+debug-*.md
+修复.md
+image.png
+img/
+原型图html版/
+apifox.json
+1

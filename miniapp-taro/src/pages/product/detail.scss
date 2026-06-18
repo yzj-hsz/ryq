@@ -1,0 +1,50 @@
+@use '@/styles/theme.scss' as *;
+
+.page { min-height: 100vh; background: linear-gradient(180deg, #f8f2eb, $app-bg 240px); display: flex; flex-direction: column; }
+.top-bar { padding: 16px 32px; }
+.back {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 28px;
+  color: $app-text;
+  box-shadow: 0 8px 20px rgba(44, 24, 16, 0.06);
+}
+.scroll { flex: 1; height: 0; }
+.gallery { height: 560px; }
+.g-img { width: 100%; height: 560px; }
+.pad { padding: 32px; }
+.title { font-size: 40px; font-weight: 800; color: $app-text; display: block; }
+.summary { font-size: 28px; color: $app-muted; margin-top: 16px; line-height: 1.6; display: block; }
+.card {
+  margin-top: 24px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 24px;
+  box-shadow: 0 12px 28px rgba(44, 24, 16, 0.05);
+}
+.ch { font-size: 30px; font-weight: 700; color: $app-text; display: block; margin-bottom: 16px; }
+.cp { font-size: 26px; color: $app-muted; line-height: 1.6; }
+.flow { display: flex; flex-wrap: wrap; gap: 12px; }
+.flow-chip { background: $tag-handmade-bg; color: $tag-handmade-text; padding: 10px 18px; border-radius: 999px; font-size: 22px; }
+.step + .step { margin-top: 20px; }
+.s-img { width: 100%; border-radius: 18px; margin-bottom: 10px; }
+.s-cap { font-size: 24px; color: $app-muted; }
+.spacer { height: 160px; }
+.want-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; padding: 24px 32px 48px;
+  background: linear-gradient(transparent, $app-bg 30%);
+}
+.want-btn { width: 100% !important; border-radius: 48px !important; }
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-inner {
+  background: $app-surface; border-radius: 24px; padding: 40px; width: 80%;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+}
+.mt { font-size: 28px; color: $app-text; text-align: center; }
+.qr { width: 400px; height: 400px; }

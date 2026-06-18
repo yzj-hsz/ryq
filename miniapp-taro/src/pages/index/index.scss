@@ -1,0 +1,17 @@
+@use '@/styles/theme.scss' as *;
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $app-bg;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}

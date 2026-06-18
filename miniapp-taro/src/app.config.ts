@@ -1,0 +1,26 @@
+export default defineAppConfig({
+  lazyCodeLoading: 'requiredComponents',
+  pages: [
+    'pages/login/login',
+    'pages/login/email-login',
+    'pages/admin/login',
+    'pages/admin/dashboard',
+    'pages/index/index',
+    'pages/product/detail',
+    'pages/tools/color-card',
+    'pages/experience/detail',
+    'pages/assist/tasks',
+    'pages/assist/task-detail',
+    'pages/assist/my-tasks',
+    'pages/culture/detail',
+    'pages/culture/handmade',
+    'pages/common/rich-detail',
+  ],
+  window: {
+    backgroundTextStyle: 'light',
+    navigationBarBackgroundColor: '#FBF5ED',
+    navigationBarTitleText: '饶有趣',
+    navigationBarTextStyle: 'black',
+    backgroundColor: '#FBF5ED',
+  },
+})
