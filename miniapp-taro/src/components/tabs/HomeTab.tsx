@@ -70,10 +70,21 @@ function VideoCarousel({ videos }: { videos: IntroVideo[] }) {
                     showMuteBtn
                     muted
                     autoplay
+                    loop={videos.length < 2}
                     autoPauseIfNavigate
                     autoPauseIfOpenNative
                     onWaiting={() => setLoadingId(video.id)}
                     onPlay={() => setLoadingId((id) => (id === video.id ? null : id))}
+                    // 拖进度条后小程序可能只发 onTimeUpdate/onSeeked 而不重发 onPlay，
+                    // 这里同样清除 loading，防止“视频加载中”卡住不消失
+                    onTimeUpdate={() => setLoadingId((id) => (id === video.id ? null : id))}
+                    onSeeked={() => setLoadingId((id) => (id === video.id ? null : id))}
+                    onEnded={() => {
+                      // 播完自动切下一个（末尾循环回开头），新挂载的 Video 自动播放
+                      if (videos.length < 2) return
+                      setLoadingId(null)
+                      setCurrent((safeIndex + 1) % videos.length)
+                    }}
                     onError={() => {
                       setLoadingId((id) => (id === video.id ? null : id))
                       setErrorIds((ids) => (ids.includes(video.id) ? ids : [...ids, video.id]))
