@@ -59,6 +59,30 @@ export function postWantClick(productId: number) {
   return request<{ ok: boolean }>(`/products/${productId}/want-click`, 'POST')
 }
 
+export interface FavoriteItem {
+  id: number
+  target_type: string
+  target_id: number
+  created_at: string
+}
+
+export function fetchMyFavorites(targetType?: string) {
+  const q = targetType ? `?target_type=${encodeURIComponent(targetType)}` : ''
+  return request<{ items: FavoriteItem[] }>(`/me/favorites${q}`, 'GET')
+}
+
+export function addFavorite(targetType: string, targetId: number) {
+  return request<{ id: number }>(`/me/favorites`, 'POST', {
+    target_type: targetType,
+    target_id: targetId,
+  })
+}
+
+export function removeFavorite(targetType: string, targetId: number) {
+  const q = `target_type=${encodeURIComponent(targetType)}&target_id=${targetId}`
+  return request<{ ok: boolean }>(`/me/favorites?${q}`, 'DELETE')
+}
+
 
 export function postAnalyticsEvent(payload: {
   event_type: string
@@ -71,14 +95,14 @@ export function postAnalyticsEvent(payload: {
 }
 
 
-export function fetchColorCardOptions() {
+export function fetchPublicColorCardOptions() {
   return request<{ dimensions: { code: string; name: string; options: ColorOption[] }[] }>(
     '/color-card/options',
     'GET'
   )
 }
 
-export function fetchColorPreset(
+export function fetchPublicColorPreset(
   fabricId: number,
   patternId: number,
   mordantId: number,

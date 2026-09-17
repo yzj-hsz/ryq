@@ -9,22 +9,40 @@
   background: rgba(255, 255, 255, 0.86);
   font-size: 28px;
   color: $app-text;
-  box-shadow: 0 8px 20px rgba(44, 24, 16, 0.06);
+  box-shadow: $shadow-md;
   margin-bottom: 24px;
 }
 .title { font-size: 36px; font-weight: 800; color: $app-text; display: block; margin-bottom: 24px; }
 .hero-image {
   width: 100%;
   display: block;
-  border-radius: 24px;
-  margin-bottom: 24px;
+  border-radius: $radius-lg;
+  margin: 0 auto 28px;
   background: #f4ede6;
+  box-shadow: $shadow-md;
 }
 .scroll {
   height: calc(100vh - 160px);
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 28px;
+  @include glass;
+  border-radius: $radius-lg;
   padding: 28px 24px 32px;
   box-sizing: border-box;
-  box-shadow: 0 12px 28px rgba(44, 24, 16, 0.05);
+  box-shadow: $shadow-md;
+}
+
+/* RichText 里的图片样式 */
+rich-text,
+.rich-text {
+  img,
+  image {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 32px auto !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    background: #000 !important;
+  }
 }

@@ -1,0 +1,53 @@
+@forward '@/styles/theme.scss';
+@use '@/styles/theme.scss' as *;
+
+.exp-detail-page { min-height: 100vh; background: linear-gradient(180deg, #f8f2eb, $app-bg 260px); }
+.exp-detail-back {
+  display: inline-flex;
+  margin: 24px 32px 0;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  font-size: 28px;
+  color: $app-text;
+  box-shadow: $shadow-md;
+}
+.exp-detail-scroll { padding-bottom: 64px; box-sizing: border-box; }
+.exp-detail-cover {
+  width: calc(100% - 96px);
+  height: 420px;
+  display: block;
+  margin: 20px auto 0;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-md;
+}
+.exp-detail-body { padding: 32px; }
+.exp-detail-title { font-size: 40px; font-weight: 800; color: $app-text; display: block; }
+.exp-detail-meta { font-size: 24px; color: $app-muted; margin-top: 12px; display: block; }
+.exp-detail-summary { font-size: 28px; color: $app-text; margin-top: 20px; line-height: 1.75; display: block; }
+.exp-detail-card {
+  margin-top: 22px;
+  padding: 24px;
+  @include glass;
+  border-radius: $radius-md;
+  box-shadow: $shadow-md;
+}
+.exp-detail-card-title { font-size: 30px; font-weight: 700; margin-bottom: 14px; display: block; color: $app-text; }
+.exp-detail-rich-content {
+  font-size: 28px;
+  color: $app-text;
+  line-height: 1.75;
+
+  img,
+  image {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 32px auto !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    background: #000 !important;
+  }
+}

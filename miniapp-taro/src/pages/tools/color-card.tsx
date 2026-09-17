@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {
-  fetchColorCardOptions,
-  fetchColorPreset,
+  fetchPublicColorCardOptions,
+  fetchPublicColorPreset,
   postAnalyticsEvent,
   postSaveDiyRecord,
-  uploadFile,
 } from '@/api/services'
 import { fetchMe } from '@/api/auth'
 import type { ColorOption } from '@/api/types'
@@ -15,10 +14,50 @@ import './color-card.scss'
 
 type Dim = { code: string; name: string; options: ColorOption[] }
 
+const DEFAULT_DIMS: Dim[] = [
+  {
+    code: 'fabric',
+    name: '布料',
+    options: [
+      { id: 1, name: '棉布', sort_order: 1 },
+      { id: 2, name: '丝绸', sort_order: 2 },
+      { id: 3, name: '麻布', sort_order: 3 },
+    ],
+  },
+  {
+    code: 'pattern',
+    name: '花纹',
+    options: [
+      { id: 4, name: '纯色', sort_order: 1 },
+      { id: 5, name: '扎染纹', sort_order: 2 },
+      { id: 6, name: '蜡染纹', sort_order: 3 },
+    ],
+  },
+  {
+    code: 'mordant',
+    name: '媒染剂',
+    options: [
+      { id: 7, name: '明矾', sort_order: 1 },
+      { id: 8, name: '铁媒染', sort_order: 2 },
+      { id: 9, name: '无媒染', sort_order: 3 },
+    ],
+  },
+  {
+    code: 'dye_time',
+    name: '浸染时间',
+    options: [
+      { id: 10, name: '10分钟', sort_order: 1 },
+      { id: 11, name: '30分钟', sort_order: 2 },
+      { id: 12, name: '60分钟', sort_order: 3 },
+    ],
+  },
+]
+
 export default function ColorCardPage() {
   const [dims, setDims] = useState<Dim[]>([])
   const [sel, setSel] = useState<Record<string, number>>({})
   const [preview, setPreview] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [statusPad, setStatusPad] = useState(20)
   const [lastTrackedSelection, setLastTrackedSelection] = useState('')
 
@@ -34,9 +73,12 @@ export default function ColorCardPage() {
       setStatusPad(24)
     }
 
-    fetchColorCardOptions()
+    fetchPublicColorCardOptions()
       .then((result) => setDims(result.dimensions))
-      .catch(() => Taro.showToast({ title: '加载失败', icon: 'none' }))
+      .catch(() => {
+        setDims(DEFAULT_DIMS)
+        Taro.showToast({ title: '已使用默认选项', icon: 'none' })
+      })
   }, [])
 
   useEffect(() => {
@@ -46,6 +88,7 @@ export default function ColorCardPage() {
     const ids = codes.map((code) => sel[code]).filter((value) => value !== undefined && value !== null)
     if (ids.length < dims.length) {
       setPreview(null)
+      setPreviewLoading(false)
       return
     }
 
@@ -56,7 +99,8 @@ export default function ColorCardPage() {
 
     if (fabricId && patternId && mordantId && timeId) {
       const selectionKey = [fabricId, patternId, mordantId, timeId].join('-')
-      fetchColorPreset(fabricId, patternId, mordantId, timeId)
+      setPreviewLoading(true)
+      fetchPublicColorPreset(fabricId, patternId, mordantId, timeId)
         .then((result) => {
           const imageUrl = result.image_url ? formatUrl(result.image_url) : null
           setPreview(imageUrl)
@@ -75,10 +119,40 @@ export default function ColorCardPage() {
           }
         })
         .catch(() => setPreview(null))
+        .finally(() => setPreviewLoading(false))
     }
   }, [sel, dims, lastTrackedSelection])
 
   const pick = (code: string, id: number) => setSel((current) => ({ ...current, [code]: id }))
+
+  const selectedOptions = useMemo(() => {
+    const findOption = (code: string) => dims.find((dim) => dim.code === code)?.options.find((option) => option.id === sel[code]) || null
+    return {
+      fabric: findOption('fabric'),
+      pattern: findOption('pattern'),
+      mordant: findOption('mordant'),
+      dyeTime: findOption('dye_time'),
+    }
+  }, [dims, sel])
+
+  const fallbackReady = Boolean(
+    selectedOptions.fabric && selectedOptions.pattern && selectedOptions.mordant && selectedOptions.dyeTime
+  )
+
+  const fabricClass = useMemo(() => {
+    const name = selectedOptions.fabric?.name || ''
+    if (name.includes('棉')) return 'fabric-cotton'
+    if (name.includes('丝')) return 'fabric-silk'
+    if (name.includes('麻')) return 'fabric-linen'
+    return 'fabric-default'
+  }, [selectedOptions.fabric])
+
+  const patternClass = useMemo(() => {
+    const name = selectedOptions.pattern?.name || ''
+    if (name.includes('扎')) return 'pattern-tie'
+    if (name.includes('蜡')) return 'pattern-batik'
+    return 'pattern-solid'
+  }, [selectedOptions.pattern])
 
   const checkGuest = async () => {
     try {
@@ -145,20 +219,6 @@ export default function ColorCardPage() {
     }
   }
 
-  const onUploadDiy = async () => {
-    try {
-      const res = await Taro.chooseImage({ count: 1 })
-      Taro.showLoading({ title: '上传中...' })
-      const uploadRes = await uploadFile(res.tempFilePaths[0])
-      Taro.hideLoading()
-      void saveRecord(uploadRes.url, true)
-    } catch (err: any) {
-      Taro.hideLoading()
-      if (err.errMsg?.includes('cancel')) return
-      Taro.showToast({ title: '上传失败', icon: 'none' })
-    }
-  }
-
   return (
     <View className='color-page' style={{ paddingTop: `${statusPad}px` }}>
       <View className='bar'>
@@ -180,10 +240,65 @@ export default function ColorCardPage() {
         ))}
         <View className='preview-box'>
           <View className='preview-container'>
-            {preview ? (
-              <Image className='preview-img' src={preview} mode='aspectFit' />
+            {previewLoading ? (
+              <View className='empty-preview preview-stage'>
+                <Text className='hint'>预览图加载中...</Text>
+              </View>
+            ) : preview ? (
+              <View className='preview-stage has-preview'>
+                <View className={`preview-fallback preview-fallback-bg ${fabricClass} ${patternClass}`}>
+                  <View className='preview-fallback-top'>
+                    <Text className='preview-fallback-badge'>茶染预览</Text>
+                    <Text className='preview-fallback-title'>{selectedOptions.pattern?.name || '预览方案'}</Text>
+                  </View>
+                  <View className='preview-fallback-cloth' />
+                  <View className='preview-fallback-meta'>
+                    <View className='preview-fallback-chip'>
+                      <Text>{selectedOptions.fabric?.name || '布料'}</Text>
+                    </View>
+                    <View className='preview-fallback-chip'>
+                      <Text>{selectedOptions.mordant?.name || '媒染剂'}</Text>
+                    </View>
+                    <View className='preview-fallback-chip'>
+                      <Text>{selectedOptions.dyeTime?.name || '浸染时间'}</Text>
+                    </View>
+                  </View>
+                </View>
+                <View className='preview-image-shell'>
+                  <Image
+                    className='preview-img'
+                    src={preview}
+                    mode='aspectFit'
+                    onError={() => {
+                      setPreview(null)
+                      Taro.showToast({ title: '预览图加载失败', icon: 'none' })
+                    }}
+                  />
+                </View>
+              </View>
+            ) : fallbackReady ? (
+              <View className='preview-stage'>
+                <View className={`preview-fallback ${fabricClass} ${patternClass}`}>
+                  <View className='preview-fallback-top'>
+                    <Text className='preview-fallback-badge'>茶染预览</Text>
+                    <Text className='preview-fallback-title'>{selectedOptions.pattern?.name || '预览方案'}</Text>
+                  </View>
+                  <View className='preview-fallback-cloth' />
+                  <View className='preview-fallback-meta'>
+                    <View className='preview-fallback-chip'>
+                      <Text>{selectedOptions.fabric?.name}</Text>
+                    </View>
+                    <View className='preview-fallback-chip'>
+                      <Text>{selectedOptions.mordant?.name}</Text>
+                    </View>
+                    <View className='preview-fallback-chip'>
+                      <Text>{selectedOptions.dyeTime?.name}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
             ) : (
-              <View className='empty-preview'>
+              <View className='empty-preview preview-stage'>
                 <Text className='hint'>请选择四个维度查看预览图</Text>
               </View>
             )}
@@ -191,7 +306,6 @@ export default function ColorCardPage() {
               <Button className={`save-btn ${!preview ? 'disabled' : 'secondary'}`} onClick={onSavePreset} disabled={!preview}>
                 保存此预览方案
               </Button>
-              <Button className='save-btn' onClick={onUploadDiy}>上传我的真实作品</Button>
             </View>
           </View>
         </View>

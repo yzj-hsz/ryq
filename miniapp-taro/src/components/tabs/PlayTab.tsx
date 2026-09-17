@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { fetchExperiences } from '@/api/services'
 import type { ExperienceItem } from '@/api/types'
+import EmptyState from '@/components/ui/EmptyState'
 import { formatUrl } from '@/utils/url'
 import './PlayTab.scss'
 
@@ -64,9 +65,14 @@ export default function PlayTab({ active }: Props) {
           </View>
         </View>
       </View>
-      <View className='list'>
+      <View className='list animate-slide-up' style={{ animationDelay: '0.1s' }}>
+        {items.length === 0 && !loading && (
+          <View className='empty-wrap'>
+            <EmptyState title='暂无体验' description='该区域暂无体验项目' />
+          </View>
+        )}
         {items.map((item) => (
-          <View key={item.id} className='exp-card' onClick={() => Taro.navigateTo({ url: `/pages/experience/detail?id=${item.id}` })}>
+          <View key={item.id} className='exp-card active-scale' onClick={() => Taro.navigateTo({ url: `/pages/experience/detail?id=${item.id}` })}>
             <View className='exp-img-wrap'>
               <Image className='exp-img' src={formatUrl(item.cover_url)} mode='aspectFill' />
               {item.badge && <View className='exp-badge' style={{ background: item.badge_color || '#b8763e' }}>{item.badge}</View>}

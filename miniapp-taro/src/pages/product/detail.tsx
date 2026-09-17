@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react'
 import { View, Text, Image, Swiper, SwiperItem, ScrollView, RichText, Button } from '@tarojs/components'
 import Taro, { useLoad, useRouter } from '@tarojs/taro'
-import { fetchProductDetail, fetchWantQrcode, postAnalyticsEvent, postWantClick } from '@/api/services'
+import {
+  addFavorite,
+  fetchMyFavorites,
+  fetchProductDetail,
+  postAnalyticsEvent,
+  postWantClick,
+  removeFavorite,
+} from '@/api/services'
 import type { ProductDetail } from '@/api/types'
 import { formatUrl } from '@/utils/url'
 import './detail.scss'
@@ -9,9 +16,9 @@ import './detail.scss'
 export default function ProductDetailPage() {
   const router = useRouter()
   const [statusPad, setStatusPad] = useState(20)
-  const [showQr, setShowQr] = useState(false)
-  const [qrUrl, setQrUrl] = useState('')
   const [product, setProduct] = useState<ProductDetail | null>(null)
+  const [faved, setFaved] = useState(false)
+  const [favLoading, setFavLoading] = useState(false)
 
   useLoad(() => {
     setStatusPad(Taro.getSystemInfoSync().statusBarHeight || 20)
@@ -24,6 +31,10 @@ export default function ProductDetailPage() {
       target_id: id,
     }).catch(() => {})
     fetchProductDetail(id).then(setProduct).catch(() => Taro.showToast({ title: '加载失败', icon: 'none' }))
+    // 状态持久化：进入页面读取后端收藏记录，回显爱心点亮状态
+    fetchMyFavorites('product')
+      .then((res) => setFaved(res.items.some((item) => item.target_id === id)))
+      .catch(() => {})
   })
 
   const gallery = product?.gallery?.length ? product.gallery : product?.cover_url ? [{ url: product.cover_url, sort_order: 0 }] : []
@@ -32,16 +43,25 @@ export default function ProductDetailPage() {
     [product?.process_text]
   )
 
-  const onWant = async () => {
-    if (!product) return
-
+  const onToggleFav = async () => {
+    if (!product || favLoading) return
+    setFavLoading(true)
     try {
-      await postWantClick(product.id)
-      const result = await fetchWantQrcode(product.id)
-      setQrUrl(result.qrcode_url)
-      setShowQr(true)
+      if (faved) {
+        await removeFavorite('product', product.id)
+        setFaved(false)
+        Taro.showToast({ title: '已取消收藏', icon: 'none' })
+      } else {
+        await addFavorite('product', product.id)
+        // 与原“我想要”行为一致：收藏成功同步上报埋点，后台统计不断流
+        await postWantClick(product.id).catch(() => {})
+        setFaved(true)
+        Taro.showToast({ title: '收藏成功', icon: 'none' })
+      }
     } catch {
-      Taro.showToast({ title: '获取二维码失败', icon: 'none' })
+      Taro.showToast({ title: faved ? '取消收藏失败，请稍后重试' : '收藏失败，请稍后重试', icon: 'none' })
+    } finally {
+      setFavLoading(false)
     }
   }
 
@@ -68,9 +88,28 @@ export default function ProductDetailPage() {
             ))}
           </Swiper>
         )}
+        <View className='fav-row'>
+          <View className={`fav-btn ${faved ? 'on' : ''}`} onClick={onToggleFav}>
+            <Text className={`fav-heart ${faved ? 'on' : ''}`}>{faved ? '♥' : '♡'}</Text>
+            <Text className='fav-label'>{faved ? '已收藏' : '收藏'}</Text>
+          </View>
+        </View>
         <View className='pad'>
           <Text className='title'>{product.name}</Text>
           <Text className='summary'>{product.summary}</Text>
+          {product.product_type === '礼盒' && (
+            <View className='card gift-entry'>
+              <Text className='ch'>礼盒选配</Text>
+              <Text className='cp'>方形 / 圆形盒型可视化预览，自由搭配盒内好物。</Text>
+              <Button
+                type='primary'
+                className='gift-btn'
+                onClick={() => Taro.navigateTo({ url: `/pages/giftbox/custom?id=${product.id}` })}
+              >
+                进入礼盒详情选配
+              </Button>
+            </View>
+          )}
           {product.origin && <View className='card'><Text className='ch'>产地溯源</Text><Text className='cp'>{product.origin}</Text></View>}
           {product.producer && <View className='card'><Text className='ch'>出品方</Text><Text className='cp'>{product.producer}</Text></View>}
           {processSteps.length > 0 && (
@@ -95,21 +134,8 @@ export default function ProductDetailPage() {
             </View>
           )}
           {product.detail_html && <View className='card'><Text className='ch'>图文详解</Text><RichText nodes={product.detail_html} /></View>}
-          <View className='spacer' />
         </View>
       </ScrollView>
-      <View className='want-bar'>
-        <Button type='primary' className='want-btn' onClick={onWant}>我想要</Button>
-      </View>
-      {showQr && (
-        <View className='modal' onClick={() => setShowQr(false)}>
-          <View className='modal-inner' onClick={(e) => e.stopPropagation()}>
-            <Text className='mt'>扫码了解更多 / 定制咨询</Text>
-            {qrUrl && <Image className='qr' src={formatUrl(qrUrl)} mode='aspectFit' showMenuByLongpress />}
-            <Button onClick={() => setShowQr(false)}>关闭</Button>
-          </View>
-        </View>
-      )}
     </View>
   )
 }

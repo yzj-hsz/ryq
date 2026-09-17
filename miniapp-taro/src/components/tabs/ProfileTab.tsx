@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import { fetchMe, patchMe, postBindEmail, postSendCode, type AuthUser } from '@/api/auth'
 import { fetchMyDiyRecords, deleteDiyRecord, patchDiyRecord, uploadFile } from '@/api/services'
 import { clearToken, setToken } from '@/utils/auth'
+import EmptyState from '@/components/ui/EmptyState'
 import { getAssetUrl } from '@/api/admin'
 import './ProfileTab.scss'
 
@@ -278,7 +279,7 @@ export default function ProfileTab({ active }: Props) {
               <Text className='avatar'>{user?.username?.slice(0, 1) || '我'}</Text>
             )}
             {!isGuest && user && (
-              <View className='header-actions'>
+              <View className='header-actions animate-fade-in'>
                 <Button className='header-action-btn' onClick={openProfileEditor}>更改资料</Button>
                 <Button className='header-action-btn ghost' onClick={openEmailEditor}>更换邮箱</Button>
               </View>
@@ -294,7 +295,7 @@ export default function ProfileTab({ active }: Props) {
       </View>
 
       {isGuest && (
-        <View className='guest-banner card'>
+        <View className='guest-banner card animate-slide-up'>
           <Text className='guest-tip'>当前为访客登录，要体验更多内容请正式登录。</Text>
           <View className='guest-actions'>
             <Button className='guest-login-btn' onClick={goLogin}>去登录</Button>
@@ -319,10 +320,12 @@ export default function ProfileTab({ active }: Props) {
 
           <View className='diy-list'>
             {diyRecords.length === 0 && !loading && (
-              <View className='empty-tip'><Text>暂无保存记录</Text></View>
+              <View className='empty-tip animate-fade-in'>
+                <EmptyState title='暂无记录' description='暂无保存记录' />
+              </View>
             )}
-            {diyRecords.map((record) => (
-              <View key={record.id} className='diy-card' onClick={() => onPreviewDiy(record)}>
+            {diyRecords.map((record, idx) => (
+              <View key={record.id} className='diy-card active-scale animate-slide-up' style={{ animationDelay: `${idx * 0.05}s` }} onClick={() => onPreviewDiy(record)}>
                 <Image className='diy-cover' src={getAssetUrl(record.preview_image_url)} mode='aspectFill' />
                 <View className='diy-info'>
                   <Text className='diy-name'>{record.title || '未命名方案'}</Text>
@@ -348,7 +351,7 @@ export default function ProfileTab({ active }: Props) {
               </View>
             )}
           </View>
-          <Button type='primary' className='logout-btn' onClick={logout}>退出登录</Button>
+          <Button type='primary' className='logout-btn active-scale animate-slide-up' onClick={logout}>退出登录</Button>
         </>
       )}
 

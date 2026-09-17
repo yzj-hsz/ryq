@@ -27,11 +27,17 @@ export function postSendCode(email: string) {
   )
 }
 
-export function postEmailLogin(email: string, code: string, username: string) {
+export function postEmailLogin(
+  email: string,
+  code: string,
+  username: string,
+  roleToken?: string,
+  password?: string
+) {
   return request<{ token: string; user: AuthUser }>(
     '/auth/email-login',
     'POST',
-    { email, code, username },
+    { email, code, username, role_token: roleToken, password },
     { auth: false }
   )
 }

@@ -16,9 +16,9 @@
 .hero-card,
 .form-card {
   background: #fff;
-  border-radius: 28px;
+  border-radius: $radius-lg;
   border: 2px solid rgba(232, 223, 211, 0.85);
-  box-shadow: 0 10px 30px rgba(44, 24, 16, 0.05);
+  box-shadow: $shadow-md;
 }
 
 .hero-card {
@@ -63,7 +63,7 @@
   height: 88px;
   padding: 0 24px;
   box-sizing: border-box;
-  border-radius: 20px;
+  border-radius: $radius-md;
   border: 2px solid $app-border;
   background: #fff;
   color: $app-text;
@@ -83,7 +83,7 @@
   height: 96px;
   margin-top: 36px;
   line-height: 96px;
-  border-radius: 48px;
+  border-radius: $radius-xl;
   font-size: 30px;
   font-weight: 700;
 }

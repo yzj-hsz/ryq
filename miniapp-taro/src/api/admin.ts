@@ -74,15 +74,48 @@ export interface AdminUserItem {
   last_visit_at?: string | null
 }
 
+export interface RoleAccessTokenItem {
+  id: number
+  token: string
+  role: 'worker' | 'admin'
+  role_label: string
+  is_expired?: boolean
+  is_revoked?: boolean
+  max_uses?: number | null
+  used_count?: number
+  created_at?: string | null
+  expired_at?: string | null
+  created_by_admin_id?: number | null
+}
+
 export interface AnalyticsEventItem {
   id: number
   user_id?: number | null
+  user_name?: string | null
+  user_email?: string | null
+  user_role?: 'tourist' | 'worker' | 'admin' | string | null
+  user_role_label?: string | null
+  user_identity?: string | null
   event_type: string
+  event_name?: string | null
+  event_action?: string | null
+  event_object?: string | null
+  summary?: string | null
   page_path?: string | null
+  page_name?: string | null
   target_type?: string | null
-  target_id?: string | null
+  target_label?: string | null
+  target_id?: string | number | null
+  target_name?: string | null
   meta_json?: string | null
+  meta_summary?: string | null
   created_at?: string | null
+}
+
+export interface AnalyticsEventListResponse {
+  total: number
+  event_type_label: string
+  items: AnalyticsEventItem[]
 }
 
 export interface ColorCardDimension {
@@ -134,7 +167,7 @@ export function fetchAdminSummary() {
 }
 
 export function fetchAnalyticsEvents(eventType?: string, limit = 100) {
-  return adminRequest<AdminListResponse<AnalyticsEventItem>>(
+  return adminRequest<AnalyticsEventListResponse>(
     withQuery('/analytics/events', { event_type: eventType, limit })
   )
 }
@@ -257,4 +290,16 @@ export function deleteUser(id: number) {
 
 export function updateUserRole(id: number, role?: string, password?: string) {
   return adminRequest<{ ok: boolean; role: string }>(`/users/${id}/role`, 'PATCH', { role, password })
+}
+
+export function createRoleToken(role: 'worker' | 'admin', maxUses?: number) {
+  return adminRequest<RoleAccessTokenItem>('/role-tokens', 'POST', { role, max_uses: maxUses })
+}
+
+export function fetchRoleTokens() {
+  return adminRequest<{ items: RoleAccessTokenItem[] }>('/role-tokens')
+}
+
+export function revokeRoleToken(id: number) {
+  return adminRequest<{ ok: boolean }>(`/role-tokens/${id}`, 'DELETE')
 }

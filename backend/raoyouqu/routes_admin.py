@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import secrets
+from collections import defaultdict
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import or_
 from werkzeug.security import generate_password_hash
 
+from .admin_account_sync import deactivate_linked_admin_user, ensure_admin_account
 from .models import (
     AdminUser,
     AnalyticsEvent,
@@ -29,6 +32,7 @@ from .models import (
     Product,
     ProductFlowStep,
     ProductGallery,
+    RoleAccessToken,
     SiteConfig,
     TaskShowcase,
     UserDiyRecord,
@@ -46,11 +50,226 @@ from .upload_security import (
 
 admin_bp = Blueprint("admin", __name__)
 
+EVENT_LABELS = {
+    "page_view": "页面浏览事件",
+    "want_click": "我想要事件",
+    "color_card_use": "色卡使用事件",
+}
+
+EVENT_ACTION_LABELS = {
+    "page_view": "浏览",
+    "want_click": "点击我想要",
+    "color_card_use": "使用色卡",
+}
+
+TARGET_TYPE_LABELS = {
+    "product": "商品",
+    "experience": "体验项目",
+    "culture_article": "文化图文",
+    "task_showcase": "茶染任务",
+    "home_banner": "精选推荐",
+    "home_highlight": "项目亮点",
+    "color_card": "色卡工具",
+}
+
+PAGE_PATH_LABELS = {
+    "/pages/index/index": "首页",
+    "/pages/product/detail": "商品详情页",
+    "/pages/tools/color-card": "色卡工具页",
+    "/pages/culture/detail": "文化图文详情页",
+    "/pages/experience/detail": "体验项目详情页",
+    "/pages/assist/task-detail": "茶染任务详情页",
+}
+
+COLOR_CARD_META_LABELS = {
+    "fabric_id": "布料",
+    "pattern_id": "纹样",
+    "mordant_id": "媒染",
+    "time_id": "染时",
+}
+
+TARGET_MODELS = {
+    "product": (Product, "name"),
+    "experience": (Experience, "name"),
+    "culture_article": (CultureArticle, "title"),
+    "task_showcase": (TaskShowcase, "name"),
+    "home_banner": (HomeBanner, "title"),
+    "home_highlight": (HomeHighlight, "title"),
+}
+
+
+def _safe_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_event_meta(meta_json: str | None) -> dict:
+    if not meta_json:
+        return {}
+    try:
+        data = json.loads(meta_json)
+    except (TypeError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+ROLE_LABELS = {
+    "tourist": "游客",
+    "worker": "工作者",
+    "admin": "管理员",
+}
+
+
+def _build_user_identity(user_info: dict | None):
+    if not user_info:
+        return "游客"
+    name = user_info.get("username") or f"用户{user_info.get('id')}"
+    extras = []
+    if user_info.get("email"):
+        extras.append(f"邮箱：{user_info['email']}")
+    role = user_info.get("role")
+    if role:
+        extras.append(f"角色：{ROLE_LABELS.get(role, role)}")
+    return f"{name}（{'，'.join(extras)}）" if extras else name
+
+
+def _build_user_summary_identity(user_info: dict | None, fallback_name: str):
+    if not user_info:
+        return fallback_name
+    role = user_info.get("role")
+    role_label = ROLE_LABELS.get(role, role) if role else None
+    return f"{fallback_name}（{role_label}）" if role_label else fallback_name
+
+
+def _build_analytics_context(rows):
+    user_ids = set()
+    target_ids_by_type = defaultdict(set)
+    color_option_ids = set()
+
+    for row in rows:
+        if row.user_id:
+            user_ids.add(row.user_id)
+        target_id = _safe_int(row.target_id)
+        if row.target_type and target_id is not None:
+            target_ids_by_type[row.target_type].add(target_id)
+
+        meta = _parse_event_meta(row.meta_json)
+        for key in COLOR_CARD_META_LABELS:
+            option_id = _safe_int(meta.get(key))
+            if option_id is not None:
+                color_option_ids.add(option_id)
+
+    user_info_map = {}
+    if user_ids:
+        users = MiniappUser.query.filter(MiniappUser.id.in_(user_ids)).all()
+        user_info_map = {
+            user.id: {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role,
+            }
+            for user in users
+        }
+
+    target_name_map = {}
+    for target_type, target_ids in target_ids_by_type.items():
+        model_info = TARGET_MODELS.get(target_type)
+        if not model_info or not target_ids:
+            continue
+        model, name_field = model_info
+        targets = model.query.filter(model.id.in_(target_ids)).all()
+        for target in targets:
+            target_name_map[(target_type, target.id)] = getattr(target, name_field, None)
+
+    color_option_name_map = {}
+    if color_option_ids:
+        options = ColorCardOption.query.filter(ColorCardOption.id.in_(color_option_ids)).all()
+        color_option_name_map = {option.id: option.name for option in options}
+
+    return user_info_map, target_name_map, color_option_name_map
+
+
+def _build_event_object(target_label: str, target_name: str | None, page_name: str | None):
+    if target_name and target_label:
+        return f"{target_name}{target_label}"
+    if target_name:
+        return target_name
+    if target_label:
+        return target_label
+    if page_name:
+        return page_name
+    return "-"
+
+
+def _build_meta_summary(meta: dict, color_option_name_map: dict[int, str]):
+    parts = []
+    for key, label in COLOR_CARD_META_LABELS.items():
+        option_id = _safe_int(meta.get(key))
+        if option_id is None:
+            continue
+        option_name = color_option_name_map.get(option_id)
+        parts.append(f"{label}：{option_name or option_id}")
+    return "，".join(parts)
+
+
+def _build_event_summary(
+    event_type: str,
+    user_name: str,
+    page_name: str | None,
+    event_object: str,
+    event_action: str,
+    meta_summary: str,
+):
+    if event_type == "page_view":
+        if page_name and event_object != page_name and event_object != "-":
+            return f"{user_name}在{page_name}浏览{event_object}"
+        if page_name:
+            return f"{user_name}浏览了{page_name}"
+        if event_object != "-":
+            return f"{user_name}浏览了{event_object}"
+        return f"{user_name}触发了页面浏览"
+
+    if event_type == "want_click":
+        if event_object != "-":
+            return f"{user_name}在{event_object}点击我想要"
+        return f"{user_name}点击了我想要"
+
+    if event_type == "color_card_use":
+        base_text = f"{user_name}在{page_name or '色卡工具'}使用色卡"
+        return f"{base_text}，{meta_summary}" if meta_summary else base_text
+
+    if event_object != "-":
+        return f"{user_name}对{event_object}{event_action}"
+    return f"{user_name}触发了{EVENT_LABELS.get(event_type, event_type)}"
+
 
 def _apply_fields(obj, body: dict, fields: list[str]) -> None:
     for f in fields:
         if f in body:
             setattr(obj, f, body[f])
+
+
+def _next_sort_order(model, *filters) -> int:
+    """新增内容默认排序：当前最大 sort_order + 1，空表返回 0。"""
+    q = db.session.query(db.func.max(model.sort_order))
+    for criterion in filters:
+        q = q.filter(criterion)
+    current_max = q.scalar()
+    return 0 if current_max is None else current_max + 1
+
+
+def _body_sort_order(body: dict, model, *filters) -> int:
+    """解析新增请求的排序值：未填/非法时自动取最大值 + 1，编辑页手填数字则原样采用。"""
+    raw = body.get("sort_order", None)
+    if raw in (None, ""):
+        return _next_sort_order(model, *filters)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return _next_sort_order(model, *filters)
 
 
 def _admin_plain_text(value: str | None) -> str:
@@ -108,86 +327,10 @@ def _validate_color_card_option_ids(option_ids: list[int]):
     return None
 
 
-def _derived_admin_email(user: MiniappUser) -> str:
-    return user.email or f"miniapp-admin-{user.id}@ryq.local"
-
-
-def _find_linked_admin_user(user: MiniappUser) -> AdminUser | None:
-    candidates = [AdminUser.email == _derived_admin_email(user)]
-    if user.email:
-        candidates.append(AdminUser.email == user.email)
-    if user.username:
-        candidates.append(AdminUser.username == user.username)
-    return AdminUser.query.filter(or_(*candidates)).order_by(AdminUser.id.asc()).first()
-
-
-def _ensure_admin_account(
-    user: MiniappUser, *, password_hash: str | None = None
-) -> tuple[AdminUser | None, tuple | None]:
-    admin = _find_linked_admin_user(user)
-    admin_email = _derived_admin_email(user)
-
-    query = AdminUser.query.filter(
-        or_(AdminUser.username == user.username, AdminUser.email == admin_email)
-    )
-    if admin:
-        query = query.filter(AdminUser.id != admin.id)
-    conflict = query.first()
-    if conflict:
-        return None, (
-            jsonify(
-                {
-                    "error": "admin_account_conflict",
-                    "message": "该用户名已被后台管理员使用，请先修改用户名后再授权管理员。",
-                }
-            ),
-            409,
-        )
-
-    if not admin:
-        if not password_hash:
-            return None, (
-                jsonify(
-                    {
-                        "error": "admin_password_required",
-                        "message": "首次授权管理员时必须同时设置登录密码。",
-                    }
-                ),
-                400,
-            )
-        admin = AdminUser(
-            username=user.username,
-            password_hash=password_hash,
-            display_name=user.username,
-            email=admin_email,
-            is_active=True,
-        )
-        db.session.add(admin)
-        return admin, None
-
-    admin.username = user.username
-    admin.display_name = user.username
-    admin.email = admin_email
-    admin.is_active = True
-    if password_hash:
-        admin.password_hash = password_hash
-    if not admin.password_hash:
-        return None, (
-            jsonify(
-                {
-                    "error": "admin_password_required",
-                    "message": "该管理员账号尚未设置登录密码，请先设置密码。",
-                }
-            ),
-            400,
-        )
-    return admin, None
-
-
-def _deactivate_linked_admin_user(user: MiniappUser) -> None:
-    admin = _find_linked_admin_user(user)
-    if admin:
-        admin.is_active = False
+def _generate_role_token_value(role: str) -> str:
+    prefix = "RYQ-ADMIN" if role == "admin" else "RYQ-WORKER"
+    random_part = secrets.token_urlsafe(12).replace("_", "").replace("-", "").upper()
+    return f"{prefix}-{random_part}"
 
 
 def _culture_promo_dict(row: CulturePromo) -> dict:
@@ -347,7 +490,7 @@ def admin_create_video():
         video_url=body.get("video_url"),
         cover_url=body.get("cover_url"),
         title=body.get("title"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, HomeVideo),
         is_active=body.get("is_active", True)
     )
     db.session.add(v)
@@ -404,7 +547,7 @@ def admin_create_ppt():
     p = HomePPT(
         image_url=body.get("image_url"),
         title=body.get("title"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, HomePPT),
         is_active=body.get("is_active", True)
     )
     db.session.add(p)
@@ -496,7 +639,7 @@ def admin_create_banner():
         detail_html=_admin_text_payload(body, "detail_text", "detail_html"),
         link_type=body.get("link_type", "none"),
         link_value=body.get("link_value"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, HomeBanner),
         is_active=body.get("is_active", True)
     )
     db.session.add(b)
@@ -558,7 +701,7 @@ def admin_create_highlight():
         summary=body.get("summary"),
         image_url=body.get("image_url"),
         detail_html=_admin_text_payload(body, "detail_text", "detail_html"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, HomeHighlight),
         is_active=body.get("is_active", True)
     )
     db.session.add(h)
@@ -738,7 +881,7 @@ def admin_create_product():
         detail_html=_admin_text_payload(body, "detail_text", "detail_html"),
         qr_code_url=body.get("qr_code_url"),
         status=body.get("status", "published"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, Product),
         publisher_id=admin.id
     )
     
@@ -952,7 +1095,7 @@ def admin_create_culture_article():
         summary=body.get("summary"),
         body_html=_admin_text_payload(body, "body_text", "body_html"),
         list_no=body.get("list_no"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, CultureArticle),
         status=body.get("status", "published"),
     )
     db.session.add(row)
@@ -1033,7 +1176,7 @@ def admin_create_experience():
         flow_text=body.get("flow_text"),
         value_text=body.get("value_text"),
         notice_html=_admin_text_payload(body, "notice_text", "notice_html"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, Experience),
         status=body.get("status", "published"),
     )
     db.session.add(row)
@@ -1117,7 +1260,7 @@ def admin_create_task_showcase():
         process_text=body.get("process_text"),
         materials=body.get("materials"),
         reference_image_url=body.get("reference_image_url"),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(body, TaskShowcase),
         is_active=body.get("is_active", True),
     )
     db.session.add(row)
@@ -1208,7 +1351,9 @@ def admin_create_color_card_option():
     row = ColorCardOption(
         dimension_id=dimension_id,
         name=body.get("name", ""),
-        sort_order=body.get("sort_order", 0),
+        sort_order=_body_sort_order(
+            body, ColorCardOption, ColorCardOption.dimension_id == dimension_id
+        ),
     )
     db.session.add(row)
     db.session.commit()
@@ -1436,6 +1581,103 @@ def admin_delete_color_card_preset(pid: int):
     return jsonify({"ok": True})
 
 
+# --- 角色令牌 ---
+
+@admin_bp.post("/role-tokens")
+def admin_create_role_token():
+    admin, err = require_admin_token()
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    role = (body.get("role") or "").strip()
+    max_uses_raw = body.get("max_uses", None)
+    if role not in ("worker", "admin"):
+        return jsonify({"error": "invalid_role", "message": "令牌类型仅支持工作人员或管理员"}), 400
+    if max_uses_raw in ("", None):
+        max_uses = None
+    else:
+        try:
+            max_uses = int(max_uses_raw)
+        except Exception:
+            return jsonify({"error": "invalid_max_uses", "message": "可用次数必须是正整数或留空"}), 400
+        if max_uses <= 0:
+            return jsonify({"error": "invalid_max_uses", "message": "可用次数必须是正整数或留空"}), 400
+
+    now = utc_now()
+    row = RoleAccessToken(
+        token=_generate_role_token_value(role),
+        role=role,
+        created_by_admin_id=getattr(admin, "id", None),
+        created_at=now,
+        expired_at=now + timedelta(hours=10),
+        max_uses=max_uses,
+        used_count=0,
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify(
+        {
+            "id": row.id,
+            "token": row.token,
+            "role": row.role,
+            "role_label": ROLE_LABELS.get(row.role, row.role),
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "expired_at": row.expired_at.isoformat() if row.expired_at else None,
+            "max_uses": row.max_uses,
+            "used_count": row.used_count,
+            "created_by_admin_id": row.created_by_admin_id,
+        }
+    )
+
+
+@admin_bp.get("/role-tokens")
+def admin_list_role_tokens():
+    admin, err = require_admin_token()
+    if err:
+        return err
+
+    now = utc_now()
+    rows = RoleAccessToken.query.order_by(RoleAccessToken.created_at.desc()).all()
+    items = []
+    for row in rows:
+        is_revoked = getattr(row, "revoked_at", None) is not None
+        is_expired_time = row.expired_at and row.expired_at < now
+        max_uses = getattr(row, "max_uses", None)
+        used_count = getattr(row, "used_count", 0) or 0
+        is_exhausted = max_uses is not None and used_count >= max_uses
+        is_expired = bool(is_revoked or is_expired_time or is_exhausted)
+        items.append(
+            {
+                "id": row.id,
+                "token": row.token,
+                "role": row.role,
+                "role_label": ROLE_LABELS.get(row.role, row.role),
+                "is_expired": is_expired,
+                "is_revoked": is_revoked,
+                "max_uses": max_uses,
+                "used_count": used_count,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "expired_at": row.expired_at.isoformat() if row.expired_at else None,
+                "created_by_admin_id": row.created_by_admin_id,
+            }
+        )
+    return jsonify({"items": items})
+
+
+@admin_bp.delete("/role-tokens/<int:tid>")
+def admin_revoke_role_token(tid: int):
+    admin, err = require_admin_token()
+    if err:
+        return err
+
+    row = RoleAccessToken.query.get_or_404(tid)
+    if getattr(row, "revoked_at", None) is None:
+        row.revoked_at = utc_now()
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 # --- 用户管理 ---
 
 @admin_bp.get("/users")
@@ -1499,14 +1741,14 @@ def admin_update_user_role(uid: int):
         user.password_hash = generate_password_hash(password)
 
     if user.role == "admin":
-        _, sync_err = _ensure_admin_account(
+        _, sync_err = ensure_admin_account(
             user,
             password_hash=user.password_hash if password else None,
         )
         if sync_err:
             return sync_err
     elif previous_role == "admin":
-        _deactivate_linked_admin_user(user)
+        deactivate_linked_admin_user(user)
 
     db.session.commit()
     return jsonify({"ok": True, "role": user.role})
@@ -1524,19 +1766,58 @@ def admin_analytics_events():
     if event_type:
         q = q.filter_by(event_type=event_type)
     limit = min(request.args.get("limit", 100, type=int), 500)
+    total = q.count()
     rows = q.order_by(AnalyticsEvent.created_at.desc()).limit(limit).all()
+    user_info_map, target_name_map, color_option_name_map = _build_analytics_context(rows)
     return jsonify({
+        "total": total,
+        "event_type_label": EVENT_LABELS.get(event_type, "埋点事件") if event_type else "埋点事件",
         "items": [
-            {
-                "id": r.id,
-                "user_id": r.user_id,
-                "event_type": r.event_type,
-                "page_path": r.page_path,
-                "target_type": r.target_type,
-                "target_id": r.target_id,
-                "meta_json": r.meta_json,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
+            _serialize_analytics_event(r, user_info_map, target_name_map, color_option_name_map)
             for r in rows
         ]
     })
+
+
+def _serialize_analytics_event(row, user_info_map, target_name_map, color_option_name_map):
+    meta = _parse_event_meta(row.meta_json)
+    page_name = PAGE_PATH_LABELS.get(row.page_path) if row.page_path else None
+    target_label = TARGET_TYPE_LABELS.get(row.target_type, row.target_type or "")
+    target_id = _safe_int(row.target_id)
+    target_name = target_name_map.get((row.target_type, target_id)) if target_id is not None else None
+    event_name = EVENT_LABELS.get(row.event_type, row.event_type)
+    event_action = EVENT_ACTION_LABELS.get(row.event_type, "操作")
+    user_info = user_info_map.get(row.user_id)
+    user_name = user_info.get("username") if user_info else (f"用户{row.user_id}" if row.user_id else "游客")
+    user_role = user_info.get("role") if user_info else ("tourist" if not row.user_id else None)
+    user_email = user_info.get("email") if user_info else None
+    user_identity = _build_user_identity(user_info)
+    user_summary_identity = _build_user_summary_identity(user_info, user_name)
+    event_object = _build_event_object(target_label, target_name, page_name)
+    meta_summary = _build_meta_summary(meta, color_option_name_map)
+    summary = _build_event_summary(row.event_type, user_summary_identity, page_name, event_object, event_action, meta_summary)
+
+    return {
+        "id": row.id,
+        "user_id": row.user_id,
+        "user_name": user_name,
+        "user_email": user_email,
+        "user_role": user_role,
+        "user_role_label": ROLE_LABELS.get(user_role, user_role) if user_role else None,
+        "user_identity": user_identity,
+        "user_summary_identity": user_summary_identity,
+        "event_type": row.event_type,
+        "event_name": event_name,
+        "event_action": event_action,
+        "event_object": event_object,
+        "summary": summary,
+        "page_path": row.page_path,
+        "page_name": page_name,
+        "target_type": row.target_type,
+        "target_label": target_label or None,
+        "target_id": row.target_id,
+        "target_name": target_name,
+        "meta_json": row.meta_json,
+        "meta_summary": meta_summary or None,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }

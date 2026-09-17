@@ -24,7 +24,7 @@
 .dim-name { font-size: 28px; font-weight: 600; color: $app-text; display: block; margin-bottom: 16px; }
 .opts { display: flex; flex-wrap: wrap; gap: 16px; }
 .opt {
-  padding: 16px 28px; border-radius: 32px; background: $app-surface;
+  padding: 16px 28px; border-radius: $radius-lg; background: $app-surface;
   border: 2px solid $app-border; font-size: 26px; color: $app-text;
   transition: all 0.2s ease;
 }
@@ -33,24 +33,149 @@
 .preview-box {
   margin: 32px; 
   background: $app-surface; 
-  border-radius: 24px;
+  border-radius: $radius-md;
   display: flex; 
   align-items: center; 
   justify-content: center; 
   padding: 40px 32px;
-  box-shadow: 0 8px 32px rgba(44,24,16,0.08);
+  box-shadow: $shadow-md;
   box-sizing: border-box;
 }
 
+.preview-stage {
+  position: relative;
+  width: 100%;
+  min-height: 360px;
+  padding: 20px;
+  box-sizing: border-box;
+  border-radius: $radius-md;
+  background: linear-gradient(180deg, #fffaf5, #ffffff);
+  border: 2px solid rgba(196, 128, 68, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.preview-stage.has-preview {
+  min-height: 460px;
+}
+
 .preview-img { 
-  width: 100%; 
-  height: auto;
-  max-height: 60vh;
-  border-radius: 16px; 
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: $radius-sm; 
+}
+
+.preview-image-shell {
+  position: absolute;
+  inset: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 12px 30px rgba(51, 33, 23, 0.14);
+  overflow: hidden;
+}
+
+.preview-fallback {
+  width: 100%;
+  min-height: 420px;
+  padding: 28px;
+  box-sizing: border-box;
+  border-radius: $radius-md;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  color: #fffdf8;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.preview-fallback.preview-fallback-bg {
+  min-height: 100%;
+}
+
+.preview-fallback.fabric-cotton {
+  background: linear-gradient(160deg, #c58b52 0%, #ab6f3e 100%);
+}
+
+.preview-fallback.fabric-silk {
+  background: linear-gradient(160deg, #b97b57 0%, #8f5f4a 100%);
+}
+
+.preview-fallback.fabric-linen {
+  background: linear-gradient(160deg, #a5784d 0%, #7d5536 100%);
+}
+
+.preview-fallback.fabric-default {
+  background: linear-gradient(160deg, #b6814b 0%, #905d34 100%);
+}
+
+.preview-fallback-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-fallback-badge {
+  align-self: flex-start;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 20px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.preview-fallback-title {
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.preview-fallback-cloth {
+  flex: 1;
+  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 248, 240, 0.18);
+}
+
+.preview-fallback.pattern-solid .preview-fallback-cloth {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+}
+
+.preview-fallback.pattern-tie .preview-fallback-cloth {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.62) 0 12%, transparent 13%),
+    radial-gradient(circle at 74% 32%, rgba(255, 255, 255, 0.52) 0 10%, transparent 11%),
+    radial-gradient(circle at 56% 72%, rgba(255, 255, 255, 0.4) 0 14%, transparent 15%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+}
+
+.preview-fallback.pattern-batik .preview-fallback-cloth {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.34) 0 12px, transparent 12px 28px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.18) 0 10px, transparent 10px 24px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+}
+
+.preview-fallback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.preview-fallback-chip {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 22px;
 }
 
 .empty-preview {
-  min-height: 300px;
+  min-height: 320px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -79,7 +204,7 @@
   color: #fff;
   font-size: 30px;
   font-weight: 600;
-  border-radius: 48px;
+  border-radius: $radius-xl;
   border: none;
   padding: 0;
 

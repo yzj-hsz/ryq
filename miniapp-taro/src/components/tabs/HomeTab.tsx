@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, Image, Swiper, SwiperItem, Video, ScrollView, RichText } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { fetchHome } from '@/api/services'
@@ -20,6 +20,92 @@ const emptyHome: HomePayload = {
 
 function looksLikeVideo(url: string) {
   return /\.(mp4|mov|m4v|webm)$/i.test(url)
+}
+
+type IntroVideo = HomePayload['intro']['videos'][0]
+
+/**
+ * 首页视频轮播：支持图片 + 视频混合。
+ * - 仅当前项挂载 <Video>，切换 Swiper 时上一个视频随组件卸载自动停止，避免多视频同时播放；
+ * - 当前视频静音自动播放（muted + autoplay，小程序/H5 均可自动播）；
+ * - 加载中显示 loading，播放异常时降级为封面图 + 提示。
+ */
+function VideoCarousel({ videos }: { videos: IntroVideo[] }) {
+  const [current, setCurrent] = useState(0)
+  const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [errorIds, setErrorIds] = useState<number[]>([])
+
+  if (!videos.length) {
+    return (
+      <View className='ppt-empty'><Text className='empty-text'>暂无视频资源</Text></View>
+    )
+  }
+  const safeIndex = Math.min(current, videos.length - 1)
+
+  return (
+    <View className='ppt-wrap'>
+      <Swiper
+        className='ppt-swiper'
+        circular
+        current={safeIndex}
+        onChange={(e) => {
+          setCurrent(e.detail.current)
+          setLoadingId(null)
+        }}
+      >
+        {videos.map((video, index) => {
+          const isCurrent = index === safeIndex
+          const failed = errorIds.includes(video.id)
+          const showPlayer = isCurrent && looksLikeVideo(video.video_url) && !failed
+          return (
+            <SwiperItem key={video.id}>
+              <View className='video-cell'>
+                {showPlayer ? (
+                  <Video
+                    className='ppt-img'
+                    src={formatUrl(video.video_url)}
+                    poster={video.cover_url ? formatUrl(video.cover_url) : undefined}
+                    controls
+                    showCenterPlayBtn
+                    showMuteBtn
+                    muted
+                    autoplay
+                    autoPauseIfNavigate
+                    autoPauseIfOpenNative
+                    onWaiting={() => setLoadingId(video.id)}
+                    onPlay={() => setLoadingId((id) => (id === video.id ? null : id))}
+                    onError={() => {
+                      setLoadingId((id) => (id === video.id ? null : id))
+                      setErrorIds((ids) => (ids.includes(video.id) ? ids : [...ids, video.id]))
+                    }}
+                  />
+                ) : (
+                  <Image
+                    className='ppt-img'
+                    src={formatUrl(video.cover_url || video.video_url)}
+                    mode='aspectFit'
+                  />
+                )}
+                {showPlayer && loadingId === video.id && (
+                  <View className='video-loading'><Text>视频加载中...</Text></View>
+                )}
+                {failed && (
+                  <View className='video-fallback'><Text>视频暂不可播放</Text></View>
+                )}
+              </View>
+            </SwiperItem>
+          )
+        })}
+      </Swiper>
+      {videos.length > 1 && (
+        <View className='ppt-dots'>
+          {videos.map((video, index) => (
+            <View key={video.id} className={`dot ${index === safeIndex ? 'on' : ''}`} />
+          ))}
+        </View>
+      )}
+    </View>
+  )
 }
 
 export default function HomeTab({ active, onSwitchTab }: Props) {
@@ -122,21 +208,7 @@ export default function HomeTab({ active, onSwitchTab }: Props) {
           ) : loadError && !loaded ? (
             <View className='loading-box' onClick={() => loadData(true)}><Text>加载失败，点击重试</Text></View>
           ) : introTab === 'video' ? (
-            data.intro.videos.length ? (
-              <Swiper className='ppt-swiper' circular autoplay={false}>
-                {data.intro.videos.map((video) => (
-                  <SwiperItem key={video.id}>
-                    {looksLikeVideo(video.video_url) ? (
-                      <Video className='ppt-img' src={formatUrl(video.video_url)} poster={formatUrl(video.cover_url)} controls showCenterPlayBtn />
-                    ) : (
-                      <Image className='ppt-img' src={formatUrl(video.cover_url || video.video_url)} mode='aspectFit' />
-                    )}
-                  </SwiperItem>
-                ))}
-              </Swiper>
-            ) : (
-              <View className='ppt-empty'><Text className='empty-text'>暂无视频资源</Text></View>
-            )
+            <VideoCarousel videos={data.intro.videos} />
           ) : introTab === 'ppt' ? (
             data.intro.ppts.length ? (
               <View className='ppt-wrap'>
@@ -164,30 +236,30 @@ export default function HomeTab({ active, onSwitchTab }: Props) {
         </View>
       </View>
 
-      <View className='quick-entries'>
-        <View className='quick-entry' onClick={() => onSwitchTab(1)}>
+      <View className='quick-entries animate-slide-up' style={{ animationDelay: '0.1s' }}>
+        <View className='quick-entry active-scale' onClick={() => onSwitchTab(1)}>
           <View className='icon-wrap w1'>文</View>
           <Text className='entry-label'>饶平文创</Text>
         </View>
-        <View className='quick-entry' onClick={() => onSwitchTab(3)}>
+        <View className='quick-entry active-scale' onClick={() => onSwitchTab(3)}>
           <View className='icon-wrap w2'>知</View>
           <Text className='entry-label'>认识饶平</Text>
         </View>
-        <View className='quick-entry' onClick={() => onSwitchTab(1, 'assist')}>
+        <View className='quick-entry active-scale' onClick={() => onSwitchTab(1, 'assist')}>
           <View className='icon-wrap w3'>助</View>
           <Text className='entry-label'>茶染任务</Text>
         </View>
-        <View className='quick-entry' onClick={() => onSwitchTab(2)}>
+        <View className='quick-entry active-scale' onClick={() => onSwitchTab(2)}>
           <View className='icon-wrap w4'>玩</View>
           <Text className='entry-label'>玩转饶平</Text>
         </View>
       </View>
 
-      <View className='section-title'><Text className='t'>精选推荐</Text></View>
+      <View className='section-title animate-slide-up' style={{ animationDelay: '0.2s' }}><Text className='t'>精选推荐</Text></View>
       {data.banners.length > 0 && (
-        <View className='banner-grid'>
+        <View className='banner-grid animate-slide-up' style={{ animationDelay: '0.2s' }}>
           {data.banners.map((banner) => (
-            <View key={banner.id} className='banner-item' onClick={() => onBannerTap(banner)}>
+            <View key={banner.id} className='banner-item active-scale' onClick={() => onBannerTap(banner)}>
               <Image className='banner-img' src={formatUrl(banner.image_url)} mode='aspectFill' lazyLoad />
               <View className='banner-info'><Text className='banner-title'>{banner.title}</Text></View>
             </View>
@@ -195,11 +267,11 @@ export default function HomeTab({ active, onSwitchTab }: Props) {
         </View>
       )}
 
-      <View className='section-title'><Text className='t'>项目亮点</Text></View>
+      <View className='section-title animate-slide-up' style={{ animationDelay: '0.3s' }}><Text className='t'>项目亮点</Text></View>
       {data.highlights.length > 0 && (
-        <View className='highlight-grid'>
+        <View className='highlight-grid animate-slide-up' style={{ animationDelay: '0.3s' }}>
           {data.highlights.map((highlight) => (
-            <View key={highlight.id} className='h-card' onClick={() => Taro.navigateTo({ url: `/pages/common/rich-detail?type=highlight&id=${highlight.id}` })}>
+            <View key={highlight.id} className='h-card active-scale' onClick={() => Taro.navigateTo({ url: `/pages/common/rich-detail?type=highlight&id=${highlight.id}` })}>
               <Text className='h-icon'>{highlight.icon}</Text>
               <Text className='h-title'>{highlight.title}</Text>
               <Text className='h-sum'>{highlight.summary}</Text>

@@ -1,9 +1,9 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { View, Text, Image, ScrollView, RichText } from '@tarojs/components'
 import Taro, { useLoad, useRouter } from '@tarojs/taro'
 import { fetchExperienceDetail } from '@/api/services'
 import { formatUrl } from '@/utils/url'
-import './detail.scss'
+import './detail-page.scss'
 
 export default function ExperienceDetailPage() {
   const router = useRouter()
@@ -17,24 +17,24 @@ export default function ExperienceDetailPage() {
 
   if (!data) {
     return (
-      <View className='sub-page'>
+      <View className='exp-detail-page'>
         <Text>加载中...</Text>
       </View>
     )
   }
 
   return (
-    <View className='sub-page'>
-      <Text className='back' onClick={() => Taro.navigateBack()}>返回</Text>
-      <ScrollView scrollY className='scroll'>
-        <Image className='cover' src={formatUrl(String(data.cover_url || ''))} mode='aspectFill' />
-        <View className='body'>
-          <Text className='title'>{String(data.name || '')}</Text>
-          <Text className='meta'>地点：{String(data.location || '')} · 时长：{String(data.duration_note || '')}</Text>
-          <Text className='summary'>{String(data.summary || '')}</Text>
-          {Boolean(data.flow_text) && <View className='card'><Text className='ch'>体验流程</Text><Text>{String(data.flow_text)}</Text></View>}
-          {Boolean(data.value_text) && <View className='card'><Text className='ch'>非遗价值</Text><Text>{String(data.value_text)}</Text></View>}
-          {Boolean(data.notice_html) && <View className='card'><RichText nodes={String(data.notice_html)} /></View>}
+    <View className='exp-detail-page'>
+      <Text className='exp-detail-back' onClick={() => Taro.navigateBack()}>返回</Text>
+      <ScrollView scrollY className='exp-detail-scroll'>
+        <Image className='exp-detail-cover' src={formatUrl(String(data.cover_url || ''))} mode='aspectFill' />
+        <View className='exp-detail-body'>
+          <Text className='exp-detail-title'>{String(data.name || '')}</Text>
+          <Text className='exp-detail-meta'>地点：{String(data.location || '')} · 时长：{String(data.duration_note || '')}</Text>
+          <Text className='exp-detail-summary'>{String(data.summary || '')}</Text>
+          {Boolean(data.flow_text) && <View className='exp-detail-card'><Text className='exp-detail-card-title'>体验流程</Text><Text>{String(data.flow_text)}</Text></View>}
+          {Boolean(data.value_text) && <View className='exp-detail-card'><Text className='exp-detail-card-title'>非遗价值</Text><Text>{String(data.value_text)}</Text></View>}
+          {Boolean(data.notice_html) && <View className='exp-detail-card'><RichText className='exp-detail-rich-content' nodes={String(data.notice_html)} /></View>}
         </View>
       </ScrollView>
     </View>

@@ -1,9 +1,10 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, Image, ScrollView, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { fetchProducts } from '@/api/services'
 import { fetchMe } from '@/api/auth'
 import type { ProductListItem } from '@/api/types'
+import EmptyState from '@/components/ui/EmptyState'
 import { formatUrl } from '@/utils/url'
 import './CultureTab.scss'
 
@@ -170,9 +171,14 @@ export default function CultureTab({ active, initialCategory }: Props) {
               </View>
             </View>
           ) : (
-            <View className='wc-products'>
-              {filtered.map((item) => (
-                <View key={item.id} className='wc-product' onClick={() => Taro.navigateTo({ url: `/pages/product/detail?id=${item.id}` })}>
+              <View className='wc-products animate-slide-up'>
+                {filtered.length === 0 && !loading && (
+                  <View className='empty-wrap'>
+                    <EmptyState title='暂无商品' description='暂无相关文创商品' />
+                  </View>
+                )}
+                {filtered.map((item) => (
+                  <View key={item.id} className='wc-product active-scale' onClick={() => Taro.navigateTo({ url: `/pages/product/detail?id=${item.id}` })}>
                   <Image className='p-img' src={formatUrl(item.cover_url)} mode='aspectFill' />
                   <View className='p-info'>
                     <Text className='p-name'>{item.name}</Text>
@@ -187,7 +193,6 @@ export default function CultureTab({ active, initialCategory }: Props) {
               ))}
             </View>
           )}
-          {currentCat !== 'assist' && filtered.length === 0 && <View className='empty-state'><Text>暂无相关商品</Text></View>}
           <View className='bottom-pad' />
         </ScrollView>
       </View>

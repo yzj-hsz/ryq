@@ -5,6 +5,19 @@ import { getAdminToken, getToken } from '@/utils/auth'
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 type TokenType = 'user' | 'admin'
 
+function extractErrorMessage(data: unknown, statusCode: number) {
+  if (data && typeof data === 'object') {
+    const payload = data as Record<string, unknown>
+    const message = payload.message
+    const detail = payload.detail
+    const error = payload.error
+    if (typeof message === 'string' && message.trim()) return message
+    if (typeof detail === 'string' && detail.trim()) return detail
+    if (typeof error === 'string' && error.trim()) return error
+  }
+  return `HTTP ${statusCode}`
+}
+
 export function request<T>(
   path: string,
   method: Method = 'GET',
@@ -30,10 +43,13 @@ export function request<T>(
       return res.data as T
     }
     console.error(`API Error [${method}] ${url}:`, res.statusCode, res.data)
-    throw new Error(`HTTP ${res.statusCode}`)
+    throw new Error(extractErrorMessage(res.data, res.statusCode))
   }).catch((err) => {
     console.error(`Network Error [${method}] ${url}:`, err)
     const msg = err?.errMsg || err?.message || '网络请求失败'
+    if (url.includes('example.invalid')) {
+      throw new Error('当前小程序未配置可用后端地址，请在构建时注入 TARO_APP_API_BASE 或改用本地开发地址')
+    }
     if (msg.includes('timeout')) {
       throw new Error(`请求超时(${url})，请确认后端服务已启动且网络可达`)
     }

@@ -6,21 +6,6 @@ page {
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
 }
 
-/* NutUI 主题变量 — 对齐饶有趣暖色公益风 */
-:root,
-page {
-  --nutui-color-primary: #{$app-primary};
-  --nutui-color-primary-stop-1: #b8763e;
-  --nutui-color-primary-stop-2: #9a5f2e;
-  --nutui-button-primary-background-color: linear-gradient(135deg, #3d6b50, #6b9e78);
-  --nutui-button-border-radius: 48px;
-  --nutui-input-border-radius: 12px;
-  --nutui-font-size-2: 28px;
-  --nutui-gray-1: #{$app-muted};
-  --nutui-gray-7: #{$app-border};
-  --nutui-black: #{$app-text};
-}
-
 .tab-scroll {
   height: 100%;
   width: 100%;
@@ -33,7 +18,7 @@ page {
 
 .card {
   background: $app-surface;
-  border-radius: 24px;
+  border-radius: $radius-md;
   padding: 28px;
   margin-bottom: 24px;
   border: 2px solid $app-border;
@@ -47,4 +32,108 @@ page {
 
 .section-title {
   padding: 0 32px 24px;
+}
+
+/* Global Animations & Transitions */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Universal Click Active State */
+.active-scale {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  &:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+}
+
+/* Safe Area Utility */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.ui-empty-graphic {
+  position: relative;
+  width: 132px;
+  height: 96px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 240, 230, 0.98));
+  box-shadow: 0 12px 28px rgba(51, 33, 23, 0.08);
+  overflow: hidden;
+}
+
+.ui-empty-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(196, 128, 68, 0.18);
+}
+
+.ui-empty-dot.dot-main {
+  width: 32px;
+  height: 32px;
+  left: 28px;
+  top: 28px;
+}
+
+.ui-empty-dot.dot-side {
+  width: 18px;
+  height: 18px;
+  right: 26px;
+  top: 22px;
+}
+
+.ui-empty-line {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(196, 128, 68, 0.16);
+}
+
+.ui-empty-line.line-top {
+  bottom: 30px;
+}
+
+.ui-empty-line.line-bottom {
+  bottom: 14px;
+  right: 40px;
+}
+
+.ui-empty-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: $app-text;
+}
+
+.ui-empty-desc {
+  font-size: 22px;
+  line-height: 1.6;
+  color: $app-muted;
 }

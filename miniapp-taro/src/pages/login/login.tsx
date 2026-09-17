@@ -9,6 +9,7 @@ const LOGO = '/assets/login-logo.jpg'
 
 export default function LoginPage() {
   const [wxLoading, setWxLoading] = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
   const [agreed, setAgreed] = useState(false)
   const [user, setUser] = useState<AuthUser | null>(null)
   const router = useRouter()
@@ -81,7 +82,9 @@ export default function LoginPage() {
 
   const onGuestLogin = async () => {
     if (!ensureAgreed()) return
+    if (guestLoading) return
 
+    setGuestLoading(true)
     Taro.showLoading({ title: '正在登录...' })
     try {
       const res = await postGuestLogin()
@@ -96,6 +99,7 @@ export default function LoginPage() {
       Taro.showToast({ title: msg, icon: 'none' })
     } finally {
       Taro.hideLoading()
+      setGuestLoading(false)
     }
   }
 
@@ -135,13 +139,19 @@ export default function LoginPage() {
         type='primary'
         className='btn-main'
         loading={wxLoading}
-        disabled={!agreed}
+        disabled={!agreed || guestLoading}
         onClick={onWechatLogin}
       >
         同意协议并微信号一键登录
       </Button>
 
-      <Button type='default' className='btn-guest' disabled={!agreed} onClick={onGuestLogin}>
+      <Button
+        type='default'
+        className='btn-guest'
+        loading={guestLoading}
+        disabled={!agreed || wxLoading || guestLoading}
+        onClick={onGuestLogin}
+      >
         以访客身份进入（无需登录）
       </Button>
 

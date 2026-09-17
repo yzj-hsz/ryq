@@ -810,7 +810,11 @@ function GenericCrudSection({ config }: { config: CrudConfig }) {
 
   const openCreate = () => {
     setEditing({ id: null })
-    setForm(initialForm(config.fields, {}))
+    const base = initialForm(config.fields, {})
+    if (config.fields.some((f) => f.key === 'sort_order')) {
+      base.sort_order = nextSortOrder(rows)
+    }
+    setForm(base)
   }
 
   const openEdit = async (row: any) => {
@@ -927,7 +931,7 @@ function ProductSection() {
 
   const openCreate = () => {
     setEditing({ id: null })
-    setForm(emptyProduct())
+    setForm({ ...emptyProduct(), sort_order: nextSortOrder(rows) })
   }
 
   const openEdit = async (row: any) => {
@@ -1800,6 +1804,11 @@ function initialForm(fields: FieldConfig[], source: Record<string, any>) {
     else result[field.key] = source[field.key] ?? ''
   })
   return result
+}
+
+/** 新增表单默认排序：列表当前最大 sort_order + 1，空列表返回 0 */
+function nextSortOrder(rows: Array<Record<string, any>>) {
+  return rows.reduce((max, row) => Math.max(max, Number(row.sort_order ?? -1)), -1) + 1
 }
 
 function serializeForm(fields: FieldConfig[], form: Record<string, any>) {

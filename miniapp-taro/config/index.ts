@@ -4,10 +4,7 @@ import devConfig from './dev'
 import prodConfig from './prod'
 
 export default defineConfig<'vite'>(async (merge) => {
-  const defaultApiBase =
-    process.env.NODE_ENV === 'development'
-      ? 'http://127.0.0.1:5000/api/v1'
-      : 'https://example.invalid/api/v1'
+  const defaultApiBase = process.env.TARO_APP_API_BASE || 'http://127.0.0.1:5000/api/v1'
 
   const miniConfig = {
     viteConfig: {

@@ -10,20 +10,49 @@
   background: rgba(255, 255, 255, 0.82);
   font-size: 28px;
   color: $app-text;
-  box-shadow: 0 8px 20px rgba(44, 24, 16, 0.06);
+  box-shadow: $shadow-md;
 }
 .scroll { flex: 1; height: 0; }
 .gallery { height: 560px; }
 .g-img { width: 100%; height: 560px; }
+/* 图片下方收藏按钮 */
+.fav-row { display: flex; justify-content: flex-end; padding: 20px 32px 0; }
+.fav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: $shadow-md;
+}
+.fav-heart {
+  display: inline-block;
+  font-size: 44px;
+  line-height: 1;
+  color: #b9aca1;
+  transition: color 0.25s ease, transform 0.25s ease;
+}
+.fav-heart.on {
+  color: #e54545;
+  animation: heartPop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.fav-label { font-size: 26px; color: $app-muted; transition: color 0.25s ease; }
+.fav-btn.on .fav-label { color: #e54545; }
+@keyframes heartPop {
+  0% { transform: scale(0.4); }
+  55% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
 .pad { padding: 32px; }
 .title { font-size: 40px; font-weight: 800; color: $app-text; display: block; }
 .summary { font-size: 28px; color: $app-muted; margin-top: 16px; line-height: 1.6; display: block; }
 .card {
   margin-top: 24px;
   padding: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 24px;
-  box-shadow: 0 12px 28px rgba(44, 24, 16, 0.05);
+  @include glass;
+  border-radius: $radius-md;
+  box-shadow: $shadow-md;
 }
 .ch { font-size: 30px; font-weight: 700; color: $app-text; display: block; margin-bottom: 16px; }
 .cp { font-size: 26px; color: $app-muted; line-height: 1.6; }
@@ -32,19 +61,4 @@
 .step + .step { margin-top: 20px; }
 .s-img { width: 100%; border-radius: 18px; margin-bottom: 10px; }
 .s-cap { font-size: 24px; color: $app-muted; }
-.spacer { height: 160px; }
-.want-bar {
-  position: fixed; bottom: 0; left: 0; right: 0; padding: 24px 32px 48px;
-  background: linear-gradient(transparent, $app-bg 30%);
-}
-.want-btn { width: 100% !important; border-radius: 48px !important; }
-.modal {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
-  display: flex; align-items: center; justify-content: center;
-}
-.modal-inner {
-  background: $app-surface; border-radius: 24px; padding: 40px; width: 80%;
-  display: flex; flex-direction: column; align-items: center; gap: 24px;
-}
-.mt { font-size: 28px; color: $app-text; text-align: center; }
-.qr { width: 400px; height: 400px; }
+.gift-entry .gift-btn { margin-top: 16px; width: 100% !important; border-radius: 48px !important; }

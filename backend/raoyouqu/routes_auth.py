@@ -7,14 +7,17 @@ import os
 import uuid
 
 from flask import Blueprint, current_app, jsonify, request
-from werkzeug.security import check_password_hash
+from sqlalchemy import or_, update
+from werkzeug.security import check_password_hash, generate_password_hash
 
+from .admin_account_sync import ensure_admin_account
 from .auth_tokens import create_token, decode_token
 from .email_client import get_email_client
 from .models import (
     AdminUser,
     EmailVerificationCode,
     MiniappUser,
+    RoleAccessToken,
     UserDiyRecord,
     UserFavorite,
     db,
@@ -25,6 +28,7 @@ from .wechat_client import jscode2session
 auth_bp = Blueprint("auth", __name__)
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+ROLE_PRIORITY = {"tourist": 0, "worker": 1, "admin": 2}
 
 def _jwt_secret() -> str:
     return current_app.config.get("JWT_SECRET") or os.environ.get(
@@ -50,6 +54,22 @@ def _email_invalid_response():
 
 def _code_required_response():
     return jsonify({"error": "code_required", "message": "请输入验证码"}), 400
+
+
+def _invalid_role_token_response():
+    return jsonify({"error": "invalid_role_token", "message": "令牌不存在或已失效"}), 400
+
+
+def _expired_role_token_response():
+    return jsonify({"error": "role_token_expired", "message": "令牌已过期，请联系管理员重新生成"}), 400
+
+
+def _revoked_role_token_response():
+    return jsonify({"error": "role_token_revoked", "message": "令牌已撤销，请联系管理员重新生成"}), 400
+
+
+def _exhausted_role_token_response():
+    return jsonify({"error": "role_token_exhausted", "message": "令牌可用次数已用尽，请联系管理员重新生成"}), 400
 
 
 def _user_payload(user: MiniappUser) -> dict:
@@ -141,6 +161,60 @@ def _validate_email_code(email: str, code: str):
 
 def _consume_email_code(row: EmailVerificationCode) -> None:
     row.used_at = utc_now()
+
+
+def _validate_role_token(raw_token: str):
+    token = raw_token.strip()
+    if not token:
+        return None, None
+    row = RoleAccessToken.query.filter_by(token=token).first()
+    if not row:
+        return None, _invalid_role_token_response()
+    if row.revoked_at is not None:
+        return None, _revoked_role_token_response()
+    if row.expired_at <= utc_now():
+        return None, _expired_role_token_response()
+    if row.max_uses is not None and (row.used_count or 0) >= row.max_uses:
+        return None, _exhausted_role_token_response()
+    if row.role not in ("worker", "admin"):
+        return None, _invalid_role_token_response()
+    return row, None
+
+
+def _consume_role_token(row: RoleAccessToken) -> tuple[bool, tuple | None]:
+    now = utc_now()
+    cond = [
+        RoleAccessToken.id == row.id,
+        RoleAccessToken.revoked_at.is_(None),
+        RoleAccessToken.expired_at > now,
+        or_(RoleAccessToken.max_uses.is_(None), RoleAccessToken.used_count < RoleAccessToken.max_uses),
+    ]
+    result = db.session.execute(
+        update(RoleAccessToken)
+        .where(*cond)
+        .values(used_count=RoleAccessToken.used_count + 1)
+    )
+    if result.rowcount != 1:
+        fresh = db.session.get(RoleAccessToken, row.id)
+        if not fresh:
+            return False, _invalid_role_token_response()
+        if fresh.revoked_at is not None:
+            return False, _revoked_role_token_response()
+        if fresh.expired_at <= now:
+            return False, _expired_role_token_response()
+        if fresh.max_uses is not None and (fresh.used_count or 0) >= fresh.max_uses:
+            return False, _exhausted_role_token_response()
+        return False, _invalid_role_token_response()
+    return True, None
+
+
+def _apply_role_upgrade(user: MiniappUser, role: str | None) -> None:
+    if not role:
+        return
+    current_priority = ROLE_PRIORITY.get(user.role or "tourist", 0)
+    next_priority = ROLE_PRIORITY.get(role, current_priority)
+    if next_priority > current_priority:
+        user.role = role
 
 
 def _save_email_code(email: str, code: str) -> None:
@@ -256,11 +330,13 @@ def auth_send_code():
 
 @auth_bp.post("/auth/email-login")
 def auth_email_login():
-    """邮箱 + 验证码登录/注册：body { email, code, username? }。"""
+    """邮箱 + 验证码登录/注册：body { email, code, username?, role_token?, password? }。"""
     body = request.get_json(silent=True) or {}
     email = _normalize_email(body.get("email") or "")
     code = (body.get("code") or "").strip()
     username = (body.get("username") or "").strip()
+    role_token = (body.get("role_token") or "").strip()
+    password = (body.get("password") or "").strip()
 
     if not email:
         return _email_required_response()
@@ -273,22 +349,45 @@ def auth_email_login():
     if verify_err:
         return verify_err
 
+    role_token_row, role_token_err = _validate_role_token(role_token)
+    if role_token_err:
+        return role_token_err
+
     user = MiniappUser.query.filter_by(email=email).first()
     if not user:
         if not username:
             username = f"邮箱用户{email.split('@')[0][:8]}"
+        requested_role = role_token_row.role if role_token_row else None
         user = MiniappUser(
             openid=f"email_{email}",
             unionid=None,
             session_key="",
             email=email,
             username=username,
+            role=requested_role or "tourist",
             last_visit_at=utc_now(),
         )
         db.session.add(user)
+        if role_token_row:
+            _, consume_err = _consume_role_token(role_token_row)
+            if consume_err:
+                return consume_err
         db.session.commit()
     else:
+        before_role = user.role
+        requested_role = role_token_row.role if role_token_row else None
+        _apply_role_upgrade(user, requested_role)
         user.last_visit_at = utc_now()
+        if role_token_row and user.role != before_role:
+            _, consume_err = _consume_role_token(role_token_row)
+            if consume_err:
+                return consume_err
+
+    if user.role == "admin":
+        password_hash = generate_password_hash(password) if password else None
+        _, sync_err = ensure_admin_account(user, password_hash=password_hash)
+        if sync_err:
+            return sync_err
 
     _consume_email_code(code_row)
     db.session.commit()

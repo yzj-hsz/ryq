@@ -290,6 +290,19 @@ class EmailVerificationCode(db.Model):
     )
 
 
+class RoleAccessToken(db.Model):
+    __tablename__ = "role_access_token"
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    role = db.Column(db.String(32), nullable=False)
+    created_by_admin_id = db.Column(db.Integer, db.ForeignKey("admin_user.id"))
+    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
+    expired_at = db.Column(db.DateTime, nullable=False)
+    max_uses = db.Column(db.Integer)
+    used_count = db.Column(db.Integer, default=0, nullable=False)
+    revoked_at = db.Column(db.DateTime)
+
+
 class UserTask(db.Model):
     """用户接取的任务记录"""
     __tablename__ = "user_task"
