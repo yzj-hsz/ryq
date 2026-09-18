@@ -450,13 +450,23 @@ def seed_if_empty() -> None:
 def seed_admin_if_empty() -> None:
     """默认管理员，仅数据库无记录时写入；小程序端不可创建。"""
     from werkzeug.security import generate_password_hash
+    import logging
     import os
 
     if AdminUser.query.first():
         return
-    
+
+    app_env = os.environ.get("APP_ENV", os.environ.get("FLASK_ENV", "development")).lower()
+    password = os.environ.get("ADMIN_PASSWORD")
+    if app_env == "production" and not password:
+        raise RuntimeError(
+            "生产环境禁止创建默认弱口令管理员，请先设置 ADMIN_PASSWORD 环境变量后再启动。"
+        )
+    if not password:
+        password = "admin123"
+        logging.warning("使用默认种子管理员口令，仅限开发环境；生产请设置 ADMIN_PASSWORD。")
+
     username = os.environ.get("ADMIN_USERNAME", "admin")
-    password = os.environ.get("ADMIN_PASSWORD", "admin123")
     email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
 
     db.session.add(

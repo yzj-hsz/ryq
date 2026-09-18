@@ -54,10 +54,16 @@ def create_app() -> Flask:
     
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["JWT_SECRET"] = os.environ.get(
-        "JWT_SECRET", "dev-jwt-secret-change-in-production"
-    )
-    app.config["APP_ENV"] = os.environ.get("APP_ENV", os.environ.get("FLASK_ENV", "development")).lower()
+    app_env = os.environ.get("APP_ENV", os.environ.get("FLASK_ENV", "development")).lower()
+    app.config["APP_ENV"] = app_env
+    jwt_secret = os.environ.get("JWT_SECRET")
+    if not jwt_secret:
+        if app_env == "production":
+            raise RuntimeError(
+                "生产环境必须设置 JWT_SECRET 环境变量，否则所有登录 token 可被伪造，拒绝启动。"
+            )
+        jwt_secret = "dev-jwt-secret-change-in-production"
+    app.config["JWT_SECRET"] = jwt_secret
     allow_placeholder_seed = os.environ.get("ALLOW_PLACEHOLDER_SEED_DATA")
     if allow_placeholder_seed is not None:
         app.config["ALLOW_PLACEHOLDER_SEED_DATA"] = allow_placeholder_seed.strip().lower() in {

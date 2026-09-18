@@ -54,8 +54,9 @@ export interface HomePayload {
 
 export interface ColorOption {
   id: number
-  dimension_code: string
+  dimension_code?: string
   name: string
+  sort_order?: number
 }
 
 export interface ExperienceItem {
