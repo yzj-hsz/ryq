@@ -54,6 +54,9 @@ export type MenuKey =
   | 'home-banners'
   | 'home-highlights'
   | 'products'
+  | 'giftboxes'
+  | 'giftbox-goods'
+  | 'user-giftboxes'
   | 'culture-promo'
   | 'culture-articles'
   | 'experiences'
@@ -124,6 +127,9 @@ export const menuGroups: Array<{ title: string; items: Array<{ key: MenuKey; lab
     title: '内容管理',
     items: [
       { key: 'products', label: '商品管理' },
+      { key: 'giftboxes', label: '礼盒款式' },
+      { key: 'giftbox-goods', label: '礼盒商品' },
+      { key: 'user-giftboxes', label: '用户礼盒' },
       { key: 'experiences', label: '体验项目' },
       { key: 'task-showcases', label: '茶染任务' },
       { key: 'color-card', label: '色卡工具' },
@@ -397,6 +403,65 @@ const genericConfigs: CrudConfig[] = [
       { key: 'is_active', label: '是否启用', type: 'checkbox' },
     ],
   },
+  {
+    key: 'giftboxes',
+    title: '礼盒款式管理',
+    description: '管理礼盒款式、包装费与起售价，客户端选配页实时读取。',
+    listPath: '/giftboxes',
+    createPath: '/giftboxes',
+    updatePath: '/giftboxes/:id',
+    deletePath: '/giftboxes/:id',
+    columns: [
+      { key: 'name', label: '名称' },
+      { key: 'box_type', label: '形状' },
+      { key: 'packing_fee', label: '包装费' },
+      { key: 'min_price', label: '起售价' },
+      { key: 'sort_order', label: '排序' },
+      { key: 'is_active', label: '启用' },
+    ],
+    fields: [
+      { key: 'name', label: '礼盒名称', type: 'text', placeholder: '例如 方形茶染礼盒' },
+      {
+        key: 'box_type',
+        label: '形状',
+        type: 'select',
+        options: [
+          { label: '方形', value: 'square' },
+          { label: '圆形', value: 'circle' },
+        ],
+      },
+      { key: 'packing_fee', label: '包装费（元）', type: 'number' },
+      { key: 'min_price', label: '起售价（元）', type: 'number' },
+      { key: 'sort_order', label: '排序值', type: 'number' },
+      { key: 'is_active', label: '是否启用', type: 'checkbox' },
+    ],
+  },
+  {
+    key: 'giftbox-goods',
+    title: '礼盒可选商品管理',
+    description: '管理可选商品的名称、占位大小与单价，客户端选配页实时读取。',
+    listPath: '/giftbox-goods',
+    createPath: '/giftbox-goods',
+    updatePath: '/giftbox-goods/:id',
+    deletePath: '/giftbox-goods/:id',
+    columns: [
+      { key: 'name', label: '名称' },
+      { key: 'price', label: '单价' },
+      { key: 'sort_order', label: '排序' },
+      { key: 'is_active', label: '启用' },
+    ],
+    fields: [
+      { key: 'name', label: '商品名称', type: 'text', placeholder: '例如 茶染丝巾' },
+      { key: 'summary', label: '简介', type: 'textarea' },
+      { key: 'w', label: '占位宽（格）', type: 'number' },
+      { key: 'h', label: '占位高（格）', type: 'number' },
+      { key: 'price', label: '单价（元）', type: 'number' },
+      { key: 'color', label: '色块颜色', type: 'text', placeholder: '例如 #c48044' },
+      { key: 'product_id', label: '关联商品ID', type: 'number' },
+      { key: 'sort_order', label: '排序值', type: 'number' },
+      { key: 'is_active', label: '是否启用', type: 'checkbox' },
+    ],
+  },
 ]
 
 export function SectionRenderer({
@@ -415,6 +480,7 @@ export function SectionRenderer({
   if (activeMenu === 'home-intro-text') return <HomeIntroTextSection refreshTick={refreshTick} />
   if (activeMenu === 'culture-promo') return <CulturePromoSection refreshTick={refreshTick} />
   if (activeMenu === 'products') return <ProductSection refreshTick={refreshTick} />
+  if (activeMenu === 'user-giftboxes') return <UserGiftBoxSection refreshTick={refreshTick} />
   if (activeMenu === 'color-card') return <ColorCardSection refreshTick={refreshTick} />
   if (activeMenu === 'media') return <MediaLibrarySection refreshTick={refreshTick} />
   if (activeMenu === 'user-tasks') return <UserTasksSection refreshTick={refreshTick} />
@@ -1335,6 +1401,143 @@ function UserDiySection({ refreshTick }: { refreshTick: number }) {
           </View>
         ))}
       </View>
+    </View>
+  )
+}
+
+function UserGiftBoxSection({ refreshTick }: { refreshTick: number }) {
+  const [rows, setRows] = useState<Record<string, any>[]>([])
+  const [loading, setLoading] = useState(true)
+  const [previewRow, setPreviewRow] = useState<Record<string, any> | null>(null)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const res = await fetchAdminList<AdminCrudItem>('/user-giftboxes')
+      setRows((res.items || []) as Record<string, any>[])
+    } catch (err: unknown) {
+      handleAdminError(err)
+    } finally {
+      setLoading(false)
+      Taro.stopPullDownRefresh()
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [refreshTick])
+
+  const onDelete = async (row: Record<string, any>) => {
+    const ok = await confirmAction('删除确认', `确定删除用户「${String(row.user?.username || row.user?.id || '?')}」的礼盒「${String(row.box_name || `#${row.id}`)}」吗？`)
+    if (!ok) return
+    try {
+      await deleteAdminItem(`/user-giftboxes/${row.id}`)
+      Taro.showToast({ title: '已删除', icon: 'success' })
+      await load()
+    } catch (err: unknown) {
+      handleAdminError(err)
+    }
+  }
+
+  return (
+    <View className='section-card'>
+      <SectionHeader title='用户保存的礼盒' description='查看所有用户保存的礼盒形状、商品、摆放、预计价格与用户信息。' />
+      <View className='card-list'>
+        {loading ? <EmptyHint text='加载中...' /> : null}
+        {!loading && rows.length === 0 ? <EmptyHint text='暂无用户礼盒' /> : null}
+        {rows.map((row) => {
+          const items = Array.isArray(row.items) ? row.items : []
+          return (
+            <View className='data-card' key={row.id} onClick={() => setPreviewRow(row)}>
+              <Text className='data-card-title'>{String(row.box_name || `礼盒 #${row.id}`)}</Text>
+              <Text className='data-card-line'>
+                用户：{String(row.user?.username || '-')}
+                {row.user?.email ? `（${String(row.user.email)}）` : ''}
+                {row.user?.role ? ` · ${String(row.user.role)}` : ''}
+              </Text>
+              <Text className='data-card-line'>形状：{row.box_type === 'circle' ? '圆形' : '方形'}</Text>
+              <Text className='data-card-line'>
+                商品：{items.length ? items.map((it: any) => `${String(it.name)}(${it.w}×${it.h}@${it.x},${it.y})`).join('；') : '空盒'}
+              </Text>
+              <Text className='data-card-line'>包装费：¥{String(row.packing_fee ?? 0)}</Text>
+              <Text className='data-card-line'>预计总价：¥{String(row.total_price ?? 0)}</Text>
+              <Text className='data-card-line'>保存时间：{String(row.created_at || '-')}</Text>
+              <View className='editor-actions'>
+                <Button
+                  className='danger-btn inline-btn'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete(row)
+                  }}
+                >
+                  删除
+                </Button>
+              </View>
+            </View>
+          )
+        })}
+      </View>
+      {/* 保存时摆法预览：只读网格还原 */}
+      <AdminModal
+        visible={!!previewRow}
+        title={previewRow ? `礼盒预览 · ${String(previewRow.box_name || `#${previewRow.id}`)}` : '礼盒预览'}
+        onClose={() => setPreviewRow(null)}
+        footer={
+          <Button className='ghost-btn inline-btn' onClick={() => setPreviewRow(null)}>关闭</Button>
+        }
+      >
+        {previewRow && (
+          <View style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <Text style={{ fontSize: '13px', color: '#8a7b70' }}>
+              {previewRow.box_type === 'circle' ? '圆形' : '方形'} · 包装费¥{String(previewRow.packing_fee ?? 0)} · 预计¥{String(previewRow.total_price ?? 0)}
+            </Text>
+            <View
+              style={{
+                position: 'relative',
+                width: '100%',
+                aspectRatio: '1',
+                background: 'rgba(251,245,237,.6)',
+                border: '2px solid #4a2e1b',
+                borderRadius: previewRow.box_type === 'circle' ? '50%' : '14px',
+                overflow: 'hidden',
+              }}
+            >
+              {(Array.isArray(previewRow.items) ? previewRow.items : []).map((it: any, index: number) => (
+                <View
+                  key={index}
+                  style={{
+                    position: 'absolute',
+                    left: `${(Number(it.x) / 3) * 100}%`,
+                    top: `${(Number(it.y) / 3) * 100}%`,
+                    width: `${(Number(it.w || 1) / 3) * 100}%`,
+                    height: `${(Number(it.h || 1) / 3) * 100}%`,
+                    padding: '3px',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: previewRow.box_type === 'circle' ? '999px' : '10px',
+                      background: '#c48044',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: '12px', color: '#fff', fontWeight: 700 }}>{String(it.name)}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <Text style={{ fontSize: '13px', color: '#8a7b70' }}>
+              用户：{String(previewRow.user?.username || '-')}
+              {previewRow.user?.email ? `（${String(previewRow.user.email)}）` : ''}
+            </Text>
+          </View>
+        )}
+      </AdminModal>
     </View>
   )
 }

@@ -23,6 +23,9 @@ from .models import (
     Experience,
     ExperienceDiyChoice,
     ExperienceDiySchema,
+    GiftBox,
+    GiftBoxGoods,
+    UserGiftBox,
     HomeBanner,
     HomeHighlight,
     HomeVideo,
@@ -732,6 +735,195 @@ def admin_delete_highlight(hid: int):
     db.session.delete(h)
     db.session.commit()
     return jsonify({"ok": True})
+
+
+# --- 礼盒管理：款式（包装费/起售价） ---
+
+def _gift_box_admin_dict(b) -> dict:
+    return {
+        "id": b.id,
+        "name": b.name,
+        "box_type": b.box_type,
+        "packing_fee": round(float(b.packing_fee or 0), 2),
+        "min_price": round(float(b.min_price or 0), 2),
+        "sort_order": b.sort_order,
+        "is_active": b.is_active,
+    }
+
+
+def _gift_box_goods_admin_dict(g) -> dict:
+    return {
+        "id": g.id,
+        "name": g.name,
+        "summary": g.summary or "",
+        "w": g.w or 1,
+        "h": g.h or 1,
+        "price": round(float(g.price or 0), 2),
+        "color": g.color,
+        "product_id": g.product_id,
+        "sort_order": g.sort_order,
+        "is_active": g.is_active,
+    }
+
+
+def _user_gift_box_admin_dict(row) -> dict:
+    try:
+        items = json.loads(row.items_json) if row.items_json else []
+    except (TypeError, ValueError):
+        items = []
+    user = MiniappUser.query.get(row.user_id) if row.user_id else None
+    return {
+        "id": row.id,
+        "gift_box_id": row.gift_box_id,
+        "box_name": row.box_name,
+        "box_type": row.box_type,
+        "packing_fee": round(float(row.packing_fee or 0), 2),
+        "items": items,
+        "total_price": round(float(row.total_price or 0), 2),
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "user": (
+            {
+                "id": user.id,
+                "username": user.username,
+                "avatar_url": user.avatar_url,
+                "email": user.email,
+                "role": user.role,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            }
+            if user
+            else None
+        ),
+    }
+
+
+@admin_bp.get("/giftboxes")
+def admin_get_giftboxes():
+    admin, err = require_admin_token()
+    if err: return err
+    boxes = GiftBox.query.order_by(GiftBox.sort_order).all()
+    return jsonify({"items": [_gift_box_admin_dict(b) for b in boxes]})
+
+
+@admin_bp.post("/giftboxes")
+def admin_create_giftbox():
+    admin, err = require_admin_token()
+    if err: return err
+    body = request.get_json(silent=True) or {}
+    if not body.get("name"):
+        return jsonify({"error": "name_required", "message": "礼盒名称必填"}), 400
+    b = GiftBox(
+        name=body.get("name"),
+        box_type=body.get("box_type") or "square",
+        packing_fee=float(body.get("packing_fee") or 0),
+        min_price=float(body.get("min_price") or 0),
+        sort_order=_body_sort_order(body, GiftBox),
+        is_active=body.get("is_active", True),
+    )
+    db.session.add(b)
+    db.session.commit()
+    return jsonify({"id": b.id})
+
+
+@admin_bp.patch("/giftboxes/<int:bid>")
+def admin_update_giftbox(bid: int):
+    admin, err = require_admin_token()
+    if err: return err
+    b = GiftBox.query.get_or_404(bid)
+    body = request.get_json(silent=True) or {}
+    _apply_fields(b, body, ["name", "box_type", "packing_fee", "min_price", "sort_order", "is_active"])
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@admin_bp.delete("/giftboxes/<int:bid>")
+def admin_delete_giftbox(bid: int):
+    admin, err = require_admin_token()
+    if err: return err
+    b = GiftBox.query.get_or_404(bid)
+    db.session.delete(b)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+# --- 礼盒管理：可选商品（占位/单价） ---
+
+@admin_bp.get("/giftbox-goods")
+def admin_get_giftbox_goods():
+    admin, err = require_admin_token()
+    if err: return err
+    goods = GiftBoxGoods.query.order_by(GiftBoxGoods.sort_order).all()
+    return jsonify({"items": [_gift_box_goods_admin_dict(g) for g in goods]})
+
+
+@admin_bp.post("/giftbox-goods")
+def admin_create_giftbox_goods():
+    admin, err = require_admin_token()
+    if err: return err
+    body = request.get_json(silent=True) or {}
+    if not body.get("name"):
+        return jsonify({"error": "name_required", "message": "商品名称必填"}), 400
+    g = GiftBoxGoods(
+        name=body.get("name"),
+        summary=body.get("summary"),
+        w=int(body.get("w") or 1),
+        h=int(body.get("h") or 1),
+        price=float(body.get("price") or 0),
+        color=body.get("color"),
+        # 前端数字框留空会传 0，无关联时必须存 NULL，否则外键 1452
+        product_id=body.get("product_id") or None,
+        sort_order=_body_sort_order(body, GiftBoxGoods),
+        is_active=body.get("is_active", True),
+    )
+    db.session.add(g)
+    db.session.commit()
+    return jsonify({"id": g.id})
+
+
+@admin_bp.patch("/giftbox-goods/<int:gid>")
+def admin_update_giftbox_goods(gid: int):
+    admin, err = require_admin_token()
+    if err: return err
+    g = GiftBoxGoods.query.get_or_404(gid)
+    body = request.get_json(silent=True) or {}
+    if "product_id" in body and not body["product_id"]:
+        body["product_id"] = None
+    _apply_fields(
+        g, body,
+        ["name", "summary", "w", "h", "price", "color", "product_id", "sort_order", "is_active"],
+    )
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@admin_bp.delete("/giftbox-goods/<int:gid>")
+def admin_delete_giftbox_goods(gid: int):
+    admin, err = require_admin_token()
+    if err: return err
+    g = GiftBoxGoods.query.get_or_404(gid)
+    db.session.delete(g)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+# --- 用户保存的礼盒（全量查看，含用户信息） ---
+
+@admin_bp.get("/user-giftboxes")
+def admin_get_user_giftboxes():
+    admin, err = require_admin_token()
+    if err: return err
+    rows = UserGiftBox.query.order_by(UserGiftBox.created_at.desc()).all()
+    return jsonify({"items": [_user_gift_box_admin_dict(r) for r in rows]})
+
+
+@admin_bp.delete("/user-giftboxes/<int:gid>")
+def admin_delete_user_giftbox(gid: int):
+    admin, err = require_admin_token()
+    if err: return err
+    row = UserGiftBox.query.get_or_404(gid)
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify({"ok": True})
+
 
 # --- 通用文件上传 ---
 

@@ -30,30 +30,33 @@
   padding: 8px 32px 16px;
 }
 
-.seg {
+/* 自动整理开关行 */
+.auto-row {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 14px 24px;
   background: rgba(255, 255, 255, 0.85);
   border: 2px solid $app-border;
   border-radius: 999px;
-  padding: 8px;
-  gap: 8px;
   box-shadow: $shadow-sm;
 }
-.seg-item {
-  flex: 1;
-  text-align: center;
-  padding: 18px 0;
+.auto-label { font-size: 26px; color: $app-muted; }
+.auto-switch { transform: scale(0.85); transform-origin: right center; }
+
+/* 当前款式信息行 */
+.picked-box-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 14px 24px;
+  background: $tag-original-bg;
   border-radius: 999px;
-  font-size: 28px;
-  color: $app-muted;
-  transition: all 0.25s ease;
-  &.on {
-    background: $nav-bg;
-    color: $nav-active;
-    font-weight: 700;
-    box-shadow: $shadow-md;
-  }
 }
+.picked-box-text { font-size: 24px; color: $tag-original-text; }
+.picked-box-change { font-size: 24px; font-weight: 700; color: $app-primary; padding: 4px 12px; }
 
 .box-stage {
   position: relative;
@@ -143,8 +146,7 @@
   max-width: 100%;
   max-height: 100%;
 }
-/* 飞入动画播完前保持隐藏，落定时再展示 */
-.gift-block.entering { visibility: hidden; }
+/* 色块基础样式 */
 .gift-block-inner {
   width: 100%;
   height: 100%;
@@ -159,6 +161,29 @@
 .box-body.circle .gift-block-inner { border-radius: 18px; }
 .gb-name { font-size: 22px; color: #fff; font-weight: 700; text-align: center; }
 .gb-size { font-size: 20px; color: rgba(255, 255, 255, 0.85); margin-top: 4px; }
+
+/* 拖拽中：原位半透明 */
+.gift-block.dragging .gift-block-inner { opacity: 0.45; }
+
+/* 拖拽目标幽灵预览 */
+.drag-ghost {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 5px;
+  z-index: 5;
+  border: 3px dashed rgba(196, 128, 68, 0.85);
+  border-radius: 14px;
+  background: rgba(196, 128, 68, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.drag-ghost.invalid {
+  border-color: rgba(201, 77, 77, 0.85);
+  background: rgba(201, 77, 77, 0.15);
+}
+.drag-ghost-text { font-size: 22px; color: $app-text; }
+.box-body.circle .drag-ghost { border-radius: 20px; }
 
 /* 落定动画：平滑入场 */
 .gift-block.land .gift-block-inner {
@@ -206,34 +231,6 @@
 .cap-text { font-size: 24px; color: $app-muted; white-space: nowrap; }
 .clear-btn { font-size: 26px; color: $tag-heritage-text; padding: 8px 16px; }
 
-/* 飞入动画层 */
-.fly-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.fly-block {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  width: 120px;
-  height: 120px;
-  margin-left: -60px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: $shadow-lg;
-  animation: flyIntoBox 0.48s cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
-}
-.fly-name { font-size: 20px; color: #fff; text-align: center; }
-@keyframes flyIntoBox {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  60% { transform: translateY(-260px) scale(0.85); opacity: 1; }
-  100% { transform: translateY(-420px) scale(0.55); opacity: 0.2; }
-}
-
 /* 下半区商品列表 */
 .goods-list {
   flex: 1;
@@ -273,6 +270,11 @@
   padding: 6px 14px;
   border-radius: 999px;
 }
+.goods-price {
+  font-size: 30px;
+  font-weight: 800;
+  color: $tag-heritage-text;
+}
 .add-btn {
   flex-shrink: 0;
   border-radius: 999px !important;
@@ -280,4 +282,22 @@
   padding: 0 28px;
   &.disabled { opacity: 0.45; }
 }
-.list-pad { height: 60px; }
+.list-pad { height: 180px; }
+
+/* 底部费用预览 + 确定保存 */
+.price-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 32px 48px;
+  background: linear-gradient(transparent, $app-bg 30%);
+}
+.price-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.price-line { font-size: 24px; color: $app-muted; }
+.price-total { font-size: 34px; font-weight: 800; color: $app-text; }
+.price-warn { font-size: 22px; color: $tag-heritage-text; }
+.save-btn { flex-shrink: 0; border-radius: 999px !important; padding: 0 40px; }

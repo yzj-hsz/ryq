@@ -11,6 +11,8 @@ from .models import (
     CultureArticle,
     CulturePromo,
     Experience,
+    GiftBox,
+    GiftBoxGoods,
     HomeBanner,
     HomeHighlight,
     HomeVideo,
@@ -444,6 +446,25 @@ def seed_if_empty() -> None:
                     )
                 )
 
+    db.session.commit()
+
+
+def seed_giftbox_if_empty() -> None:
+    """礼盒款式与可选商品的默认数据，款式、商品各自仅在空表时写入。"""
+    if not GiftBox.query.first():
+        db.session.add_all([
+            GiftBox(name="方形茶染礼盒", box_type="square", packing_fee=18.0, min_price=68.0, sort_order=0),
+            GiftBox(name="圆形茶染礼盒", box_type="circle", packing_fee=22.0, min_price=88.0, sort_order=1),
+        ])
+    if not GiftBoxGoods.query.first():
+        db.session.add_all([
+            GiftBoxGoods(name="茶染丝巾", summary="占位 1×1 格", w=1, h=1, price=39.0, color="#c48044", sort_order=0),
+            GiftBoxGoods(name="茶染茶席", summary="占位 2×2 格", w=2, h=2, price=129.0, color="#3d6b50", sort_order=1),
+            GiftBoxGoods(name="高山单枞", summary="占位 1×1 格", w=1, h=1, price=59.0, color="#c94d4d", sort_order=2),
+            GiftBoxGoods(name="手作杯垫", summary="占位 2×1 格", w=2, h=1, price=29.0, color="#5b6e8a", sort_order=3),
+            GiftBoxGoods(name="非遗书签", summary="占位 1×2 格", w=1, h=2, price=19.0, color="#9a5f2e", sort_order=4),
+            GiftBoxGoods(name="文创明信片", summary="占位 1×1 格", w=1, h=1, price=9.0, color="#7a4a6e", sort_order=5),
+        ])
     db.session.commit()
 
 

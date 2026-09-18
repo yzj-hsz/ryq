@@ -1,0 +1,25 @@
+@use '@/styles/theme.scss' as *;
+
+.mine-page { min-height: 100vh; background: linear-gradient(180deg, #f8f2eb, $app-bg 240px); display: flex; flex-direction: column; }
+.mine-topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; }
+.back {
+  padding: 12px 24px; border-radius: 999px; background: rgba(255, 255, 255, 0.82);
+  font-size: 28px; color: $app-text; box-shadow: $shadow-md;
+}
+.mine-title { font-size: 34px; font-weight: 800; color: $app-text; }
+.new-btn { font-size: 26px; color: $app-primary; padding: 8px 16px; }
+.mine-list { flex: 1; height: 0; padding: 8px 32px 0; }
+.mine-hint { display: block; text-align: center; color: $app-muted; font-size: 26px; margin-top: 80px; }
+.mine-card {
+  padding: 24px; margin-bottom: 20px;
+  @include glass; border-radius: $radius-md; box-shadow: $shadow-md;
+}
+.mine-card-top { display: flex; align-items: center; justify-content: space-between; }
+.mine-name { font-size: 32px; font-weight: 800; color: $app-text; }
+.mine-total { font-size: 34px; font-weight: 800; color: $tag-heritage-text; }
+.mine-meta { display: block; font-size: 24px; color: $app-muted; margin-top: 8px; }
+.mine-goods { display: block; font-size: 26px; color: $app-text; margin-top: 8px; line-height: 1.6; }
+.mine-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.mine-date { font-size: 22px; color: $app-muted; }
+.mine-del { font-size: 24px; color: $tag-heritage-text; padding: 8px 16px; }
+.list-pad { height: 60px; }

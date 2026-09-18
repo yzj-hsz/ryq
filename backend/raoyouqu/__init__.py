@@ -12,7 +12,7 @@ from .models import db
 from .routes_api import bp as api_bp
 from .routes_auth import auth_bp
 from .routes_admin import admin_bp
-from .seed import seed_admin_if_empty, seed_if_empty
+from .seed import seed_admin_if_empty, seed_giftbox_if_empty, seed_if_empty
 
 
 def _warn_if_migrations_pending(backend_dir: Path) -> None:
@@ -124,6 +124,8 @@ def create_app() -> Flask:
             if {"admin_user", "site_config"}.issubset(existing_tables):
                 seed_if_empty()
                 seed_admin_if_empty()
+                if "gift_box" in existing_tables and "gift_box_goods" in existing_tables:
+                    seed_giftbox_if_empty()
             else:
                 print(
                     "Database schema warning: required tables are missing. "

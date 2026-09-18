@@ -83,6 +83,74 @@ export function removeFavorite(targetType: string, targetId: number) {
   return request<{ ok: boolean }>(`/me/favorites?${q}`, 'DELETE')
 }
 
+export interface GiftBoxBrief {
+  id: number
+  name: string
+  box_type: 'square' | 'circle'
+  packing_fee: number
+  min_price: number
+  sort_order: number
+}
+
+export interface GiftBoxGoods {
+  id: number
+  name: string
+  summary: string
+  w: number
+  h: number
+  cells: number
+  price: number
+  color: string | null
+  product_id: number | null
+}
+
+export interface SavedGiftBox {
+  id: number
+  gift_box_id: number | null
+  box_name: string
+  box_type: 'square' | 'circle'
+  packing_fee: number
+  items: {
+    goods_id: number
+    name: string
+    w: number
+    h: number
+    x: number
+    y: number
+    price: number
+  }[]
+  total_price: number
+  created_at: string | null
+}
+
+export function fetchGiftBoxes() {
+  return request<{ items: GiftBoxBrief[] }>('/giftboxes', 'GET')
+}
+
+export function fetchGiftBoxGoods() {
+  return request<{ items: GiftBoxGoods[] }>('/giftbox-goods', 'GET')
+}
+
+export function saveMyGiftBox(payload: {
+  gift_box_id: number | null
+  box_type: 'square' | 'circle'
+  items: { goods_id: number; x: number; y: number }[]
+}) {
+  return request<{ id: number; total_price: number }>('/me/giftboxes', 'POST', payload)
+}
+
+export function fetchMyGiftBoxes() {
+  return request<{ items: SavedGiftBox[] }>('/me/giftboxes', 'GET')
+}
+
+export function fetchMyGiftBoxDetail(id: number) {
+  return request<SavedGiftBox>(`/me/giftboxes/${id}`, 'GET')
+}
+
+export function deleteMyGiftBox(id: number) {
+  return request<{ ok: boolean }>(`/me/giftboxes/${id}`, 'DELETE')
+}
+
 
 export function postAnalyticsEvent(payload: {
   event_type: string

@@ -1,0 +1,31 @@
+@use '@/styles/theme.scss' as *;
+
+.select-page { min-height: 100vh; background: linear-gradient(180deg, #f8f2eb, $app-bg 240px); display: flex; flex-direction: column; }
+.select-topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; }
+.back {
+  padding: 12px 24px; border-radius: 999px; background: rgba(255, 255, 255, 0.82);
+  font-size: 28px; color: $app-text; box-shadow: $shadow-md;
+}
+.select-title { font-size: 34px; font-weight: 800; color: $app-text; }
+.select-count { font-size: 26px; color: $app-muted; }
+.select-list { flex: 1; height: 0; padding: 8px 32px 0; }
+.select-hint { display: block; text-align: center; color: $app-muted; font-size: 26px; margin-top: 80px; }
+.box-card {
+  display: flex; align-items: center; gap: 24px;
+  padding: 28px; margin-bottom: 20px;
+  @include glass; border-radius: $radius-md; box-shadow: $shadow-md;
+}
+.box-shape {
+  width: 130px; height: 130px; flex-shrink: 0;
+  @include rz-header-gradient;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: $shadow-sm;
+}
+.box-shape.square { border-radius: 20px; }
+.box-shape.circle { border-radius: 50%; }
+.box-shape-text { color: $nav-active; font-size: 30px; font-weight: 800; }
+.box-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.box-name { font-size: 32px; font-weight: 800; color: $app-text; }
+.box-desc { font-size: 26px; color: $app-muted; }
+.box-go { font-size: 28px; font-weight: 700; color: $app-primary; flex-shrink: 0; }
+.list-pad { height: 60px; }

@@ -104,7 +104,7 @@ export default function ProductDetailPage() {
               <Button
                 type='primary'
                 className='gift-btn'
-                onClick={() => Taro.navigateTo({ url: `/pages/giftbox/custom?id=${product.id}` })}
+                onClick={() => Taro.navigateTo({ url: `/pages/giftbox/select` })}
               >
                 进入礼盒详情选配
               </Button>

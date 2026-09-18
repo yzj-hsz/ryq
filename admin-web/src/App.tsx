@@ -22,6 +22,8 @@ type MenuKey =
   | 'home-banners'
   | 'home-highlights'
   | 'products'
+  | 'giftboxes'
+  | 'giftbox-goods'
   | 'culture-promo'
   | 'culture-articles'
   | 'experiences'
@@ -81,6 +83,8 @@ const menuGroups: Array<{ title: string; items: Array<{ key: MenuKey; label: str
     title: '内容管理',
     items: [
       { key: 'products', label: '商品管理' },
+      { key: 'giftboxes', label: '礼盒款式' },
+      { key: 'giftbox-goods', label: '礼盒商品' },
       { key: 'culture-promo', label: '认识饶平宣传区' },
       { key: 'culture-articles', label: '文化图文' },
       { key: 'experiences', label: '体验项目' },
@@ -319,6 +323,65 @@ const genericConfigs: CrudConfig[] = [
       { key: 'process_text', label: '流程文案', type: 'textarea' },
       { key: 'materials', label: '材料说明', type: 'textarea' },
       { key: 'reference_image_url', label: '参考图', type: 'image' },
+      { key: 'sort_order', label: '排序值', type: 'number' },
+      { key: 'is_active', label: '是否启用', type: 'checkbox' },
+    ],
+  },
+  {
+    key: 'giftboxes',
+    title: '礼盒款式管理',
+    description: '管理礼盒款式、包装费与起售价，小程序选配页实时读取。',
+    listPath: '/giftboxes',
+    createPath: '/giftboxes',
+    updatePath: '/giftboxes/:id',
+    deletePath: '/giftboxes/:id',
+    columns: [
+      { key: 'name', label: '名称' },
+      { key: 'box_type', label: '形状' },
+      { key: 'packing_fee', label: '包装费' },
+      { key: 'min_price', label: '起售价' },
+      { key: 'sort_order', label: '排序' },
+      { key: 'is_active', label: '启用' },
+    ],
+    fields: [
+      { key: 'name', label: '礼盒名称', type: 'text', placeholder: '例如 方形茶染礼盒' },
+      {
+        key: 'box_type',
+        label: '形状',
+        type: 'select',
+        options: [
+          { label: '方形', value: 'square' },
+          { label: '圆形', value: 'circle' },
+        ],
+      },
+      { key: 'packing_fee', label: '包装费（元）', type: 'number' },
+      { key: 'min_price', label: '起售价（元）', type: 'number' },
+      { key: 'sort_order', label: '排序值', type: 'number' },
+      { key: 'is_active', label: '是否启用', type: 'checkbox' },
+    ],
+  },
+  {
+    key: 'giftbox-goods',
+    title: '礼盒可选商品管理',
+    description: '管理可选商品的名称、占位大小与单价，小程序选配页实时读取。',
+    listPath: '/giftbox-goods',
+    createPath: '/giftbox-goods',
+    updatePath: '/giftbox-goods/:id',
+    deletePath: '/giftbox-goods/:id',
+    columns: [
+      { key: 'name', label: '名称' },
+      { key: 'price', label: '单价' },
+      { key: 'sort_order', label: '排序' },
+      { key: 'is_active', label: '启用' },
+    ],
+    fields: [
+      { key: 'name', label: '商品名称', type: 'text', placeholder: '例如 茶染丝巾' },
+      { key: 'summary', label: '简介', type: 'textarea' },
+      { key: 'w', label: '占位宽（格）', type: 'number' },
+      { key: 'h', label: '占位高（格）', type: 'number' },
+      { key: 'price', label: '单价（元）', type: 'number' },
+      { key: 'color', label: '色块颜色', type: 'text', placeholder: '例如 #c48044' },
+      { key: 'product_id', label: '关联商品ID', type: 'number' },
       { key: 'sort_order', label: '排序值', type: 'number' },
       { key: 'is_active', label: '是否启用', type: 'checkbox' },
     ],

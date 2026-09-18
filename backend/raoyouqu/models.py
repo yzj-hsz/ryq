@@ -354,6 +354,51 @@ class UserFavorite(db.Model):
     user = db.relationship("MiniappUser", backref=db.backref("favorites", cascade="all, delete-orphan"))
 
 
+class GiftBox(db.Model):
+    """礼盒款式：包装费、起售价由管理端维护"""
+    __tablename__ = "gift_box"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    box_type = db.Column(db.String(32), nullable=False, default="square") # 'square' | 'circle'
+    packing_fee = db.Column(db.Float, default=0, nullable=False) # 包装费（元）
+    min_price = db.Column(db.Float, default=0, nullable=False) # 起售价（元，含包装费）
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
+
+
+class GiftBoxGoods(db.Model):
+    """礼盒可选商品：占位大小、单价由管理端维护"""
+    __tablename__ = "gift_box_goods"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    summary = db.Column(db.String(512))
+    w = db.Column(db.Integer, default=1, nullable=False) # 占位宽（格）
+    h = db.Column(db.Integer, default=1, nullable=False) # 占位高（格）
+    price = db.Column(db.Float, default=0, nullable=False) # 单价（元）
+    color = db.Column(db.String(32)) # 前端色块展示用
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id")) # 可关联商品，可为空
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
+
+
+class UserGiftBox(db.Model):
+    """用户保存的礼盒：快照式保存形状、商品、摆放与预计价格"""
+    __tablename__ = "user_gift_box"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("miniapp_user.id"), nullable=False)
+    gift_box_id = db.Column(db.Integer, db.ForeignKey("gift_box.id"))
+    box_name = db.Column(db.String(128))
+    box_type = db.Column(db.String(32))
+    packing_fee = db.Column(db.Float, default=0, nullable=False)
+    items_json = db.Column(db.Text) # [{goods_id, name, w, h, x, y, price}]
+    total_price = db.Column(db.Float, default=0, nullable=False) # 预计总价（元）
+    created_at = db.Column(db.DateTime, default=utc_now)
+
+    user = db.relationship("MiniappUser", backref=db.backref("gift_boxes", cascade="all, delete-orphan"))
+
+
 class UserFootprint(db.Model):
     """用户浏览足迹"""
     __tablename__ = "user_footprint"

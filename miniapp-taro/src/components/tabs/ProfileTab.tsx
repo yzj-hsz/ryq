@@ -345,6 +345,9 @@ export default function ProfileTab({ active }: Props) {
       {!isGuest && (
         <>
           <View className='menu card'>
+            <View className='menu-item' onClick={() => Taro.navigateTo({ url: '/pages/giftbox/mine' })}>
+              我的礼盒
+            </View>
             {user && user.role !== 'tourist' && (user.role === 'worker' || user.role === 'admin') && (
               <View className='menu-item' onClick={() => Taro.navigateTo({ url: '/pages/assist/my-tasks' })}>
                 我的接取任务

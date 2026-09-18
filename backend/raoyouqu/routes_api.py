@@ -16,6 +16,8 @@ from .models import (
     Experience,
     ExperienceDiyChoice,
     ExperienceDiySchema,
+    GiftBox,
+    GiftBoxGoods,
     HomeBanner,
     HomeHighlight,
     HomeVideo,
@@ -28,6 +30,7 @@ from .models import (
     UserDiyRecord,
     UserFavorite,
     UserFootprint,
+    UserGiftBox,
     UserTask,
     MiniappUser,
     db,
@@ -637,7 +640,7 @@ def add_favorite():
 def remove_favorite():
     user, err = require_user_token()
     if err: return err
-    
+
     # 支持两种删除方式：通过 ID 或通过 target_type+target_id
     fid = request.args.get("id", type=int)
     if fid:
@@ -650,8 +653,183 @@ def remove_favorite():
         fav = UserFavorite.query.filter_by(
             user_id=user.id, target_type=target_type, target_id=target_id
         ).first_or_404()
-        
+
     db.session.delete(fav)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+# --- 礼盒选配（用户端） ---
+
+GIFTBOX_GRID = 3
+
+
+def _gift_box_dict(b: GiftBox) -> dict:
+    return {
+        "id": b.id,
+        "name": b.name,
+        "box_type": b.box_type,
+        "packing_fee": round(float(b.packing_fee or 0), 2),
+        "min_price": round(float(b.min_price or 0), 2),
+        "sort_order": b.sort_order,
+        "is_active": b.is_active,
+    }
+
+
+def _gift_box_goods_dict(g: GiftBoxGoods) -> dict:
+    return {
+        "id": g.id,
+        "name": g.name,
+        "summary": g.summary or "",
+        "w": g.w or 1,
+        "h": g.h or 1,
+        "cells": (g.w or 1) * (g.h or 1),
+        "price": round(float(g.price or 0), 2),
+        "color": g.color,
+        "product_id": g.product_id,
+        "sort_order": g.sort_order,
+    }
+
+
+def _user_gift_box_dict(row: UserGiftBox) -> dict:
+    try:
+        items = json.loads(row.items_json) if row.items_json else []
+    except (TypeError, ValueError):
+        items = []
+    return {
+        "id": row.id,
+        "gift_box_id": row.gift_box_id,
+        "box_name": row.box_name,
+        "box_type": row.box_type,
+        "packing_fee": round(float(row.packing_fee or 0), 2),
+        "items": items,
+        "total_price": round(float(row.total_price or 0), 2),
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+def _validate_gift_layout(items: list[dict]) -> str | None:
+    """校验 3x3 网格摆放：越界 / 重叠返回错误信息，无问题返回 None。"""
+    grid = [[False] * GIFTBOX_GRID for _ in range(GIFTBOX_GRID)]
+    for item in items:
+        try:
+            x, y = int(item["x"]), int(item["y"])
+            w, h = int(item["w"]), int(item["h"])
+        except (KeyError, TypeError, ValueError):
+            return "invalid_item_geometry"
+        if w <= 0 or h <= 0 or x < 0 or y < 0 or x + w > GIFTBOX_GRID or y + h > GIFTBOX_GRID:
+            return "item_out_of_bounds"
+        for dy in range(h):
+            for dx in range(w):
+                if grid[y + dy][x + dx]:
+                    return "items_overlapped"
+                grid[y + dy][x + dx] = True
+    return None
+
+
+@bp.get("/giftboxes")
+def giftbox_list():
+    boxes = GiftBox.query.filter_by(is_active=True).order_by(GiftBox.sort_order).all()
+    return jsonify({"items": [_gift_box_dict(b) for b in boxes]})
+
+
+@bp.get("/giftbox-goods")
+def giftbox_goods_list():
+    goods = GiftBoxGoods.query.filter_by(is_active=True).order_by(GiftBoxGoods.sort_order).all()
+    return jsonify({"items": [_gift_box_goods_dict(g) for g in goods]})
+
+
+@bp.post("/me/giftboxes")
+def save_user_giftbox():
+    user, err = require_user_token()
+    if err: return err
+
+    body = request.get_json(silent=True) or {}
+    gift_box_id = body.get("gift_box_id")
+    raw_items = body.get("items") or []
+    if not isinstance(raw_items, list) or not raw_items:
+        return jsonify({"error": "items_required", "message": "请至少选择一件商品"}), 400
+
+    box = GiftBox.query.filter_by(id=gift_box_id, is_active=True).first() if gift_box_id else None
+    if gift_box_id and not box:
+        return jsonify({"error": "gift_box_not_found"}), 404
+    packing_fee = float(box.packing_fee or 0) if box else 0.0
+    min_price = float(box.min_price or 0) if box else 0.0
+
+    # 服务端按库内单价重算，不信任客户端传来的金额
+    snapshot_items = []
+    goods_total = 0.0
+    for raw in raw_items:
+        if not isinstance(raw, dict) or not raw.get("goods_id"):
+            return jsonify({"error": "goods_id_required"}), 400
+        try:
+            x, y = int(raw["x"]), int(raw["y"])
+        except (KeyError, TypeError, ValueError):
+            return jsonify({"error": "invalid_item_position"}), 400
+        goods = GiftBoxGoods.query.filter_by(id=raw["goods_id"], is_active=True).first()
+        if not goods:
+            return jsonify({"error": f"goods_{raw['goods_id']}_not_found"}), 404
+        price = float(goods.price or 0)
+        goods_total += price
+        snapshot_items.append({
+            "goods_id": goods.id,
+            "name": goods.name,
+            "w": goods.w or 1,
+            "h": goods.h or 1,
+            "x": x,
+            "y": y,
+            "price": round(price, 2),
+        })
+
+    layout_error = _validate_gift_layout(snapshot_items)
+    if layout_error:
+        return jsonify({"error": layout_error, "message": "商品摆放超出礼盒或相互重叠"}), 400
+
+    total = round(packing_fee + goods_total, 2)
+    if total < min_price:
+        return jsonify({
+            "error": "below_min_price",
+            "message": f"未达到起售价{min_price}元",
+            "min_price": min_price,
+            "total_price": total,
+        }), 400
+
+    row = UserGiftBox(
+        user_id=user.id,
+        gift_box_id=box.id if box else None,
+        box_name=box.name if box else (body.get("box_name") or ""),
+        box_type=box.box_type if box else (body.get("box_type") or "square"),
+        packing_fee=round(packing_fee, 2),
+        items_json=json.dumps(snapshot_items, ensure_ascii=False),
+        total_price=total,
+    )
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({"id": row.id, "total_price": total})
+
+
+@bp.get("/me/giftboxes")
+def my_giftboxes():
+    user, err = require_user_token()
+    if err: return err
+    rows = UserGiftBox.query.filter_by(user_id=user.id).order_by(UserGiftBox.created_at.desc()).all()
+    return jsonify({"items": [_user_gift_box_dict(r) for r in rows]})
+
+
+@bp.get("/me/giftboxes/<int:gid>")
+def my_giftbox_detail(gid: int):
+    user, err = require_user_token()
+    if err: return err
+    row = UserGiftBox.query.filter_by(id=gid, user_id=user.id).first_or_404()
+    return jsonify(_user_gift_box_dict(row))
+
+
+@bp.delete("/me/giftboxes/<int:gid>")
+def delete_my_giftbox(gid: int):
+    user, err = require_user_token()
+    if err: return err
+    row = UserGiftBox.query.filter_by(id=gid, user_id=user.id).first_or_404()
+    db.session.delete(row)
     db.session.commit()
     return jsonify({"ok": True})
 
