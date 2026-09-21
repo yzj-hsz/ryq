@@ -32,6 +32,7 @@ type MenuKey =
   | 'media'
   | 'user-tasks'
   | 'user-diy'
+  | 'user-giftboxes'
   | 'users'
   | 'site-config'
 
@@ -98,6 +99,7 @@ const menuGroups: Array<{ title: string; items: Array<{ key: MenuKey; label: str
     items: [
       { key: 'user-tasks', label: '用户任务审核' },
       { key: 'user-diy', label: '用户 DIY 记录' },
+      { key: 'user-giftboxes', label: '用户礼盒' },
       { key: 'site-config', label: '站点配置' },
     ],
   },
@@ -473,6 +475,7 @@ function SectionRenderer({ activeMenu, onJump }: { activeMenu: MenuKey; onJump: 
   if (activeMenu === 'media') return <MediaLibrarySection />
   if (activeMenu === 'user-tasks') return <UserTasksSection />
   if (activeMenu === 'user-diy') return <UserDiySection />
+  if (activeMenu === 'user-giftboxes') return <UserGiftboxViewerSection />
   if (activeMenu === 'users') return <UserManagementSection />
   if (activeMenu === 'site-config') return <SiteConfigSection />
   return <div>未实现的页面</div>
@@ -1473,6 +1476,150 @@ function UserDiySection() {
             username: row.user?.username,
           }))}
         />
+      </div>
+    </div>
+  )
+}
+
+function UserGiftboxViewerSection() {
+  const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState<number | null>(null)
+
+  useEffect(() => {
+    adminRequest<{ items: any[] }>('/user-giftboxes')
+      .then((res) => setRows(res.items || []))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const remove = async (row: any) => {
+    if (!window.confirm(`确认删除用户「${row.user?.username || '-'}」的该礼盒吗？`)) return
+    await adminRequest(`/user-giftboxes/${row.id}`, 'DELETE')
+    setRows((prev) => prev.filter((r) => r.id !== row.id))
+    if (expanded === row.id) setExpanded(null)
+  }
+
+  return (
+    <div className='stack'>
+      <SectionIntro title='用户保存的礼盒' description='查看所有用户保存的礼盒，含摆法还原与价格信息。' />
+      <div className='panel'>
+        {loading ? <div className='muted-text' style={{ padding: 16 }}>加载中...</div> : null}
+        {!loading && rows.length === 0 ? <div className='muted-text' style={{ padding: 16 }}>暂无用户礼盒</div> : null}
+        {rows.map((row) => {
+          const items = Array.isArray(row.items) ? row.items : []
+          const isOpen = expanded === row.id
+          return (
+            <div key={row.id} style={{ borderBottom: '1px solid rgba(0,0,0,.06)' }}>
+              <div
+                className='data-card'
+                style={{ cursor: 'pointer' }}
+                onClick={() => setExpanded(isOpen ? null : row.id)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 20, width: 32, textAlign: 'center' }}>
+                    {row.box_type === 'circle' ? '⚪' : '🟧'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600 }}>
+                      {row.box_name || `礼盒 #${row.id}`}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#8a7b70' }}>
+                      {row.user?.username || '未知用户'}
+                      {row.user?.email ? ` (${row.user.email})` : ''}
+                      {' · '}
+                      {items.length} 件商品 · ¥{row.total_price}
+                      {' · '}
+                      {row.created_at ? new Date(row.created_at).toLocaleString() : '-'}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#aaa' }}>{isOpen ? '收起' : '展开'}</div>
+                </div>
+              </div>
+              {isOpen && (
+                <div style={{ padding: '12px 16px', background: 'rgba(251,245,237,.3)' }}>
+                  <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                    {/* 网格还原 */}
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: 180,
+                        height: 180,
+                        background: 'rgba(251,245,237,.6)',
+                        border: '2px solid #4a2e1b',
+                        borderRadius: row.box_type === 'circle' ? '50%' : 14,
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {items.map((it: any, idx: number) => (
+                        <div
+                          key={idx}
+                          style={{
+                            position: 'absolute',
+                            left: `${(Number(it.x) / 3) * 100}%`,
+                            top: `${(Number(it.y) / 3) * 100}%`,
+                            width: `${(Number(it.w || 1) / 3) * 100}%`,
+                            height: `${(Number(it.h || 1) / 3) * 100}%`,
+                            padding: 2,
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              borderRadius: row.box_type === 'circle' ? '999px' : 8,
+                              background: '#c48044',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <span style={{ fontSize: 11, color: '#fff', fontWeight: 600 }}>{it.name}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* 商品明细 */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}>商品明细</div>
+                      {items.length === 0 ? (
+                        <div style={{ color: '#aaa' }}>无商品</div>
+                      ) : (
+                        <table style={{ width: '100%', fontSize: 13 }}>
+                          <thead>
+                            <tr style={{ color: '#8a7b70' }}>
+                              <th style={{ textAlign: 'left' }}>名称</th>
+                              <th>占位</th>
+                              <th>位置</th>
+                              <th style={{ textAlign: 'right' }}>单价</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.map((it: any, idx: number) => (
+                              <tr key={idx}>
+                                <td>{it.name}</td>
+                                <td style={{ textAlign: 'center' }}>{it.w}×{it.h}</td>
+                                <td style={{ textAlign: 'center' }}>({it.x},{it.y})</td>
+                                <td style={{ textAlign: 'right' }}>¥{it.price}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, color: '#8a7b70' }}>
+                          包装费 ¥{row.packing_fee} · 预计总价 ¥{row.total_price}
+                        </span>
+                        <button className='link-btn danger' onClick={(e) => { e.stopPropagation(); remove(row) }}>删除</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -7,6 +7,7 @@ import {
   postAnalyticsEvent,
   saveMyGiftBox,
 } from '@/api/services'
+import { isLoggedIn } from '@/utils/auth'
 import type { GiftBoxBrief } from '@/api/services'
 import './custom.scss'
 
@@ -198,6 +199,17 @@ export default function GiftboxCustomPage() {
     if (!placed.length || saving) return
     if (belowMin) {
       Taro.showToast({ title: `未达到起售价${minPrice}元`, icon: 'none' })
+      return
+    }
+    if (!isLoggedIn()) {
+      const confirm = await Taro.showModal({
+        title: '请先登录',
+        content: '保存礼盒需要登录，是否前往登录？',
+        confirmText: '去登录',
+      })
+      if (confirm.confirm) {
+        Taro.navigateTo({ url: '/pages/login/login' })
+      }
       return
     }
     const confirm = await Taro.showModal({
