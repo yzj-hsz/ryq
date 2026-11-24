@@ -3,6 +3,7 @@ import { View, Text } from '@tarojs/components'
 import Taro, { usePullDownRefresh, useRouter } from '@tarojs/taro'
 import { isAdminLoggedIn } from '@/utils/auth'
 import { MENU_LABELS, SectionRenderer, type MenuKey } from './sections'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './dashboard.scss'
 
 const VALID_KEYS = Object.keys(MENU_LABELS) as MenuKey[]
@@ -28,12 +29,7 @@ export default function AdminModulePage() {
   })
 
   const goHome = () => {
-    const pages = Taro.getCurrentPages()
-    if (pages.length > 1) {
-      Taro.navigateBack()
-    } else {
-      Taro.reLaunch({ url: '/pages/admin/dashboard' })
-    }
+    navigateBackOrRelaunch('/pages/admin/dashboard')
   }
 
   const onJump = (key: MenuKey) => {

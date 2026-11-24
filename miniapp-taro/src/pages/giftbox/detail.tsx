@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView, Button } from '@tarojs/components'
 import Taro, { useLoad, useRouter } from '@tarojs/taro'
 import { deleteMyGiftBox, fetchMyGiftBoxDetail } from '@/api/services'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import type { SavedGiftBox } from '@/api/services'
 import './detail.scss'
 
@@ -29,7 +30,7 @@ export default function SavedGiftBoxDetailPage() {
     try {
       await deleteMyGiftBox(item.id)
       Taro.showToast({ title: '已删除', icon: 'success' })
-      setTimeout(() => Taro.navigateBack(), 600)
+      setTimeout(() => navigateBackOrRelaunch('/pages/giftbox/mine'), 600)
     } catch {
       Taro.showToast({ title: '删除失败', icon: 'none' })
     }
@@ -47,7 +48,7 @@ export default function SavedGiftBoxDetailPage() {
   return (
     <View className='saved-page' style={{ paddingTop: `${statusPad}px` }}>
       <View className='saved-topbar'>
-        <Text className='back active-scale' onClick={() => Taro.navigateBack()}>返回</Text>
+        <Text className='back active-scale' onClick={() => navigateBackOrRelaunch('/pages/giftbox/mine')}>返回</Text>
         <Text className='saved-title'>{item.box_name || '定制礼盒'}</Text>
         <Text className='saved-total'>¥{item.total_price}</Text>
       </View>

@@ -677,16 +677,31 @@ def _gift_box_dict(b: GiftBox) -> dict:
 
 
 def _gift_box_goods_dict(g: GiftBoxGoods) -> dict:
+    # 关联商品介绍：有 product_id 则带出商品摘要/封面，前端可展示“介绍”并跳转商品详情
+    product_summary = ""
+    product_cover = ""
+    product_name = ""
+    if g.product_id:
+        p = Product.query.get(g.product_id)
+        if p:
+            product_summary = p.summary or ""
+            product_cover = p.cover_url or ""
+            product_name = p.name or ""
     return {
         "id": g.id,
         "name": g.name,
         "summary": g.summary or "",
+        "spec": getattr(g, "spec", None) or "",
+        "material": getattr(g, "material", None) or "",
         "w": g.w or 1,
         "h": g.h or 1,
         "cells": (g.w or 1) * (g.h or 1),
         "price": round(float(g.price or 0), 2),
         "color": g.color,
         "product_id": g.product_id,
+        "product_name": product_name,
+        "product_summary": product_summary,
+        "product_cover_url": product_cover,
         "sort_order": g.sort_order,
     }
 
@@ -751,6 +766,11 @@ def save_user_giftbox():
         return jsonify({"error": "items_required", "message": "请至少选择一件商品"}), 400
 
     box = GiftBox.query.filter_by(id=gift_box_id, is_active=True).first() if gift_box_id else None
+    # 直进固定礼盒：前端不再传 box_id 时，自动使用唯一启用的方形礼盒
+    if not box and not gift_box_id:
+        box = GiftBox.query.filter_by(is_active=True, box_type="square").first()
+        if not box:
+            box = GiftBox.query.filter_by(is_active=True).order_by(GiftBox.sort_order).first()
     if gift_box_id and not box:
         return jsonify({"error": "gift_box_not_found"}), 404
     packing_fee = float(box.packing_fee or 0) if box else 0.0

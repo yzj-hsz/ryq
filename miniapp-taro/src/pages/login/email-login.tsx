@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { View, Text, Image, Button, Input } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useRouter } from '@tarojs/taro'
 import { postSendCode, postEmailLogin, postGuestLogin } from '@/api/auth'
 import { setToken } from '@/utils/auth'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './email-login.scss'
 
 const LOGO = '/assets/login-logo.jpg'
@@ -17,6 +18,20 @@ export default function EmailLoginPage() {
   const [confirmAdminPassword, setConfirmAdminPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
+
+  const router = useRouter()
+  const resolvePostLoginTarget = () => {
+    const raw = router.params.redirect
+    if (typeof raw === 'string' && raw) {
+      try {
+        const decoded = decodeURIComponent(raw)
+        if (decoded.startsWith('/pages/')) return decoded
+      } catch {
+        /* 解码失败则 fallback 首页 */
+      }
+    }
+    return '/pages/index/index'
+  }
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email])
   const emailValid = useMemo(() => EMAIL_RE.test(normalizedEmail), [normalizedEmail])
@@ -83,8 +98,9 @@ export default function EmailLoginPage() {
         title: isAdminRoleToken ? '管理员已开通' : '登录成功',
         icon: 'success',
       })
+      const target = resolvePostLoginTarget()
       setTimeout(() => {
-        void Taro.reLaunch({ url: '/pages/index/index' })
+        void Taro.reLaunch({ url: target })
       }, 600)
     } catch (err: unknown) {
       Taro.showToast({ title: err instanceof Error ? err.message : '登录失败', icon: 'none' })
@@ -99,8 +115,9 @@ export default function EmailLoginPage() {
       const res = await postGuestLogin()
       setToken(res.token)
       Taro.showToast({ title: '访客登录成功', icon: 'success' })
+      const target = resolvePostLoginTarget()
       setTimeout(() => {
-        void Taro.reLaunch({ url: '/pages/index/index' })
+        void Taro.reLaunch({ url: target })
       }, 600)
     } catch {
       Taro.showToast({ title: '登录失败', icon: 'none' })
@@ -111,7 +128,7 @@ export default function EmailLoginPage() {
 
   return (
     <View className='email-login-page'>
-      <View className='back-btn' onClick={() => Taro.navigateBack()}>
+      <View className='back-btn' onClick={() => navigateBackOrRelaunch('/pages/login/login')}>
         <Text>返回</Text>
       </View>
 

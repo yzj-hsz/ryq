@@ -450,21 +450,54 @@ def seed_if_empty() -> None:
 
 
 def seed_giftbox_if_empty() -> None:
-    """礼盒款式与可选商品的默认数据，款式、商品各自仅在空表时写入。"""
+    """礼盒款式与可选商品的默认数据，款式、商品各自仅在空表时写入；并修复存量占位文案。
+
+    每个可选商品必须带：尺寸(spec)、材质(material)、基本介绍(summary)。
+    空表时全量写入；存量库则补齐缺失的尺寸/材质并替换占位介绍，即“修改同时重新生成商品”。
+    """
+    # 重新生成的标准商品数据：尺寸 + 材质 + 基本介绍
+    standard_goods = [
+        dict(name="茶染丝巾", summary="植物染桑蚕丝巾，茶汤固色，温润亲肤，送礼体面。",
+             spec="68×68cm", material="桑蚕丝·植物染", w=1, h=1, price=39.0, color="#c48044", sort_order=0),
+        dict(name="茶染茶席", summary="手工茶染棉麻茶席，吸水耐泡，茶室、办公两用。",
+             spec="40×60cm", material="棉麻·茶染", w=2, h=2, price=129.0, color="#3d6b50", sort_order=1),
+        dict(name="高山单枞", summary="饶平高山单枞，蜜兰香型，独立小泡装，配礼盒正好。",
+             spec="8g×6小泡", material="饶平高山乌龙茶", w=1, h=1, price=59.0, color="#c94d4d", sort_order=2),
+        dict(name="手作杯垫", summary="茶染布艺杯垫，隔热防滑，一盒可搭两枚。",
+             spec="直径11cm×2枚", material="茶染棉布·隔热垫片", w=2, h=1, price=29.0, color="#5b6e8a", sort_order=3),
+        dict(name="非遗书签", summary="布马舞纹样书签，硬挺覆膜，孩子、大人都喜欢。",
+             spec="5×15cm", material="特种纸·覆膜", w=1, h=2, price=19.0, color="#9a5f2e", sort_order=4),
+        dict(name="文创明信片", summary="饶平风物插画明信片，可手写祝福随盒寄出。",
+             spec="10×15cm", material="300g铜版纸", w=1, h=1, price=9.0, color="#7a4a6e", sort_order=5),
+    ]
     if not GiftBox.query.first():
         db.session.add_all([
-            GiftBox(name="方形茶染礼盒", box_type="square", packing_fee=18.0, min_price=68.0, sort_order=0),
-            GiftBox(name="圆形茶染礼盒", box_type="circle", packing_fee=22.0, min_price=88.0, sort_order=1),
+            GiftBox(name="方形茶染礼盒", box_type="square", packing_fee=18.0, min_price=68.0, sort_order=0, is_active=True),
         ])
     if not GiftBoxGoods.query.first():
-        db.session.add_all([
-            GiftBoxGoods(name="茶染丝巾", summary="占位 1×1 格", w=1, h=1, price=39.0, color="#c48044", sort_order=0),
-            GiftBoxGoods(name="茶染茶席", summary="占位 2×2 格", w=2, h=2, price=129.0, color="#3d6b50", sort_order=1),
-            GiftBoxGoods(name="高山单枞", summary="占位 1×1 格", w=1, h=1, price=59.0, color="#c94d4d", sort_order=2),
-            GiftBoxGoods(name="手作杯垫", summary="占位 2×1 格", w=2, h=1, price=29.0, color="#5b6e8a", sort_order=3),
-            GiftBoxGoods(name="非遗书签", summary="占位 1×2 格", w=1, h=2, price=19.0, color="#9a5f2e", sort_order=4),
-            GiftBoxGoods(name="文创明信片", summary="占位 1×1 格", w=1, h=1, price=9.0, color="#7a4a6e", sort_order=5),
-        ])
+        db.session.add_all([GiftBoxGoods(**kw) for kw in standard_goods])
+    else:
+        # 存量库升级（重新生成）：按名称补齐尺寸/材质/介绍
+        std_by_name = {kw["name"]: kw for kw in standard_goods}
+        for g in GiftBoxGoods.query.all():
+            std = std_by_name.get(g.name)
+            if not std:
+                continue
+            current = (g.summary or "").strip()
+            if current.startswith("占位") or not current:
+                g.summary = std["summary"]
+            if not (getattr(g, "spec", None) or "").strip():
+                g.spec = std["spec"]
+            if not (getattr(g, "material", None) or "").strip():
+                g.material = std["material"]
+        # 存量收敛：只保留一个启用的方形礼盒
+        active = GiftBox.query.filter_by(is_active=True).order_by(GiftBox.sort_order).all()
+        if len(active) > 1:
+            keep = next((b for b in active if b.box_type == "square"), active[0])
+            for b in active:
+                if b.id != keep.id:
+                    b.is_active = False
+            keep.box_type = "square"
     db.session.commit()
 
 

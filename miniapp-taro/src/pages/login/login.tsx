@@ -14,6 +14,19 @@ export default function LoginPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const router = useRouter()
   const forceShowLogin = router.params.from === 'guest'
+  /** giftbox 等页面带过来的回跳地址，登录成功后优先返回 */
+  const resolvePostLoginTarget = () => {
+    const raw = router.params.redirect
+    if (typeof raw === 'string' && raw) {
+      try {
+        const decoded = decodeURIComponent(raw)
+        if (decoded.startsWith('/pages/')) return decoded
+      } catch {
+        /* 解码失败则 fallback 首页 */
+      }
+    }
+    return '/pages/index/index'
+  }
 
   const userLabel = useMemo(() => {
     if (!user) return ''
@@ -69,8 +82,9 @@ export default function LoginPage() {
       setToken(res.token)
       setUser(res.user)
       Taro.showToast({ title: '登录成功', icon: 'success' })
+      const target = resolvePostLoginTarget()
       setTimeout(() => {
-        void Taro.reLaunch({ url: '/pages/index/index' })
+        void Taro.reLaunch({ url: target })
       }, 600)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '登录失败'
@@ -91,8 +105,9 @@ export default function LoginPage() {
       setToken(res.token)
       setUser(res.user)
       Taro.showToast({ title: '访客登录成功', icon: 'success' })
+      const target = resolvePostLoginTarget()
       setTimeout(() => {
-        void Taro.reLaunch({ url: '/pages/index/index' })
+        void Taro.reLaunch({ url: target })
       }, 600)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '登录失败'
@@ -171,7 +186,14 @@ export default function LoginPage() {
       </View>
 
       <View className='alt-row'>
-        <View className='alt-item' onClick={() => Taro.navigateTo({ url: '/pages/login/email-login' })}>
+        <View className='alt-item' onClick={() => {
+          const raw = router.params.redirect
+          const url = typeof raw === 'string' && raw
+            ? `/pages/login/email-login?redirect=${encodeURIComponent(raw)}`
+            : '/pages/login/email-login'
+          Taro.navigateTo({ url })
+        }}
+        >
           <View className='alt-btn alt-circle'>
             <Text className='alt-icon-mail'>@</Text>
           </View>
@@ -193,7 +215,7 @@ export default function LoginPage() {
             <Button
               type='default'
               className='btn-enter'
-              onClick={() => Taro.reLaunch({ url: '/pages/index/index' })}
+              onClick={() => Taro.reLaunch({ url: resolvePostLoginTarget() })}
             >
               进入首页
             </Button>

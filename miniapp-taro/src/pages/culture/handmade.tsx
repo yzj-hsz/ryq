@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import { fetchProducts } from '@/api/services'
 import type { ProductListItem } from '@/api/types'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './handmade.scss'
 
 function tagClass(tag: string) {
@@ -28,7 +29,7 @@ export default function HandmadePage() {
   return (
     <View className='handmade-page'>
       <View className='bar'>
-        <Text className='back' onClick={() => Taro.navigateBack()}>返回</Text>
+        <Text className='back' onClick={() => navigateBackOrRelaunch()}>返回</Text>
         <Text className='t'>匠心手作</Text>
       </View>
 

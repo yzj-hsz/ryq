@@ -11,6 +11,7 @@ import {
 } from '@/api/services'
 import type { ProductDetail } from '@/api/types'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './detail.scss'
 
 export default function ProductDetailPage() {
@@ -76,7 +77,7 @@ export default function ProductDetailPage() {
   return (
     <View className='page' style={{ paddingTop: `${statusPad}px` }}>
       <View className='top-bar'>
-        <Text className='back' onClick={() => Taro.navigateBack()}>返回</Text>
+        <Text className='back' onClick={() => navigateBackOrRelaunch()}>返回</Text>
       </View>
       <ScrollView scrollY className='scroll'>
         {gallery.length > 0 && (
@@ -100,11 +101,11 @@ export default function ProductDetailPage() {
           {product.product_type === '礼盒' && (
             <View className='card gift-entry'>
               <Text className='ch'>礼盒选配</Text>
-              <Text className='cp'>方形 / 圆形盒型可视化预览，自由搭配盒内好物。</Text>
+              <Text className='cp'>固定方形礼盒，直接进入搭配盒内好物。</Text>
               <Button
                 type='primary'
                 className='gift-btn'
-                onClick={() => Taro.navigateTo({ url: `/pages/giftbox/select` })}
+                onClick={() => Taro.navigateTo({ url: `/pages/giftbox/custom` })}
               >
                 进入礼盒详情选配
               </Button>

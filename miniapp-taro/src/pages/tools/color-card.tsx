@@ -10,6 +10,7 @@ import {
 import { fetchMe } from '@/api/auth'
 import type { ColorOption } from '@/api/types'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './color-card.scss'
 
 type Dim = { code: string; name: string; options: ColorOption[] }
@@ -222,7 +223,7 @@ export default function ColorCardPage() {
   return (
     <View className='color-page' style={{ paddingTop: `${statusPad}px` }}>
       <View className='bar'>
-        <Text className='back' onClick={() => Taro.navigateBack()}>返回</Text>
+        <Text className='back' onClick={() => navigateBackOrRelaunch()}>返回</Text>
         <Text className='t'>色卡预览</Text>
       </View>
       <ScrollView scrollY className='scroll'>

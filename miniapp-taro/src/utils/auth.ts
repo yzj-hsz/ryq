@@ -20,6 +20,32 @@ export function isLoggedIn(): boolean {
   return !!getToken()
 }
 
+export interface SimpleUser {
+  role?: string | null
+  username?: string | null
+}
+
+/** 与 ProfileTab / CultureTab 保持一致的访客判定：tourist + “访客”前缀 */
+export function isGuestUser(user: SimpleUser | null | undefined): boolean {
+  if (!user) return false
+  return user.role === 'tourist' && (user.username ?? '').startsWith('访客')
+}
+
+/**
+ * 跳转到登录页。
+ * - 会先清掉访客 token，否则登录页 useDidShow 检测到 token 会直接 reLaunch 回首页，导致无法登录
+ * - redirect：登录成功后回跳的页面路径（含参数），例如 /pages/giftbox/custom?box_id=1
+ */
+export function goLoginPage(redirect?: string) {
+  clearToken()
+  try {
+    const query = redirect ? `?from=guest&redirect=${encodeURIComponent(redirect)}` : '?from=guest'
+    Taro.reLaunch({ url: `/pages/login/login${query}` })
+  } catch {
+    /* 忽略跳转异常 */
+  }
+}
+
 export function getAdminToken(): string {
   return Taro.getStorageSync(ADMIN_AUTH_TOKEN_KEY) || ''
 }

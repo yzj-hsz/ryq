@@ -24,6 +24,29 @@
   .gift-cap { font-size: 26px; color: $app-muted; }
 }
 
+/* 访客 / 未登录提示条：可继续搭配，保存时拦截跳登录 */
+.auth-tip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 32px 0;
+  padding: 14px 24px;
+  background: rgba(201, 77, 77, 0.08);
+  border: 2px solid rgba(201, 77, 77, 0.25);
+  border-radius: 18px;
+}
+.auth-tip-text { flex: 1; font-size: 24px; color: #a33e3e; }
+.auth-tip-btn {
+  flex-shrink: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  background: $app-primary;
+  border-radius: 999px;
+  padding: 8px 28px;
+}
+
 /* 上半区预览 */
 .preview-zone {
   position: relative;
@@ -262,6 +285,7 @@
 .goods-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .goods-name { font-size: 30px; font-weight: 700; color: $app-text; }
 .goods-desc { font-size: 24px; color: $app-muted; }
+.goods-desc.spec { color: $app-text; }
 .goods-slot {
   font-size: 22px;
   color: $tag-original-text;
@@ -275,6 +299,14 @@
   font-weight: 800;
   color: $tag-heritage-text;
 }
+.goods-link {
+  font-size: 24px;
+  font-weight: 700;
+  color: $app-primary;
+  padding: 4px 0;
+}
+.goods-links { display: flex; gap: 24px; }
+.goods-desc.sub { color: $app-text; }
 .add-btn {
   flex-shrink: 0;
   border-radius: 999px !important;

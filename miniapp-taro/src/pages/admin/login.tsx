@@ -3,6 +3,7 @@ import { View, Text, Button, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { postAdminLogin } from '@/api/admin'
 import { isAdminLoggedIn, setAdminProfile, setAdminToken } from '@/utils/auth'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './login.scss'
 
 export default function AdminLoginPage() {
@@ -40,7 +41,7 @@ export default function AdminLoginPage() {
 
   return (
     <View className='admin-login-page'>
-      <View className='back-btn' onClick={() => Taro.navigateBack()}>
+      <View className='back-btn' onClick={() => navigateBackOrRelaunch('/pages/login/login')}>
         <Text>返回登录首页</Text>
       </View>
 

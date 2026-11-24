@@ -756,6 +756,8 @@ def _gift_box_goods_admin_dict(g) -> dict:
         "id": g.id,
         "name": g.name,
         "summary": g.summary or "",
+        "spec": getattr(g, "spec", None) or "",
+        "material": getattr(g, "material", None) or "",
         "w": g.w or 1,
         "h": g.h or 1,
         "price": round(float(g.price or 0), 2),
@@ -811,15 +813,21 @@ def admin_create_giftbox():
     body = request.get_json(silent=True) or {}
     if not body.get("name"):
         return jsonify({"error": "name_required", "message": "礼盒名称必填"}), 400
+    # 固定方形礼盒：前端不再选形状，后端统一收敛为 square
+    is_active = body.get("is_active", True)
     b = GiftBox(
         name=body.get("name"),
-        box_type=body.get("box_type") or "square",
+        box_type="square",
         packing_fee=float(body.get("packing_fee") or 0),
         min_price=float(body.get("min_price") or 0),
         sort_order=_body_sort_order(body, GiftBox),
-        is_active=body.get("is_active", True),
+        is_active=is_active,
     )
     db.session.add(b)
+    db.session.flush()
+    # 只能启用一个：启用当前则停用其他
+    if is_active:
+        GiftBox.query.filter(GiftBox.id != b.id).update({"is_active": False})
     db.session.commit()
     return jsonify({"id": b.id})
 
@@ -830,7 +838,13 @@ def admin_update_giftbox(bid: int):
     if err: return err
     b = GiftBox.query.get_or_404(bid)
     body = request.get_json(silent=True) or {}
+    # 固定方形：忽略前端传来的 box_type，始终保持 square
+    body = {**body, "box_type": "square"}
     _apply_fields(b, body, ["name", "box_type", "packing_fee", "min_price", "sort_order", "is_active"])
+    db.session.flush()
+    # 只能启用一个：启用当前则停用其他
+    if b.is_active:
+        GiftBox.query.filter(GiftBox.id != b.id).update({"is_active": False})
     db.session.commit()
     return jsonify({"ok": True})
 
@@ -865,6 +879,8 @@ def admin_create_giftbox_goods():
     g = GiftBoxGoods(
         name=body.get("name"),
         summary=body.get("summary"),
+        spec=body.get("spec"),
+        material=body.get("material"),
         w=int(body.get("w") or 1),
         h=int(body.get("h") or 1),
         price=float(body.get("price") or 0),
@@ -889,7 +905,7 @@ def admin_update_giftbox_goods(gid: int):
         body["product_id"] = None
     _apply_fields(
         g, body,
-        ["name", "summary", "w", "h", "price", "color", "product_id", "sort_order", "is_active"],
+        ["name", "summary", "spec", "material", "w", "h", "price", "color", "product_id", "sort_order", "is_active"],
     )
     db.session.commit()
     return jsonify({"ok": True})

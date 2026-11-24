@@ -4,6 +4,7 @@ import Taro, { useLoad, useRouter } from '@tarojs/taro'
 import { fetchTaskDetail, postAcceptTask } from '@/api/services'
 import { fetchMe, type AuthUser } from '@/api/auth'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './task-detail.scss'
 
 const STATUS: Record<string, string> = {
@@ -73,7 +74,7 @@ export default function TaskDetailPage() {
 
   return (
     <View className='sub-page'>
-      <Text className='back' onClick={() => Taro.navigateBack()}>返回</Text>
+      <Text className='back' onClick={() => navigateBackOrRelaunch('/pages/assist/tasks')}>返回</Text>
       <ScrollView scrollY className='detail-scroll'>
         <View className='detail-hero'>
           <Image className='cover' src={formatUrl(String(task.cover_url || ''))} mode='aspectFill' />

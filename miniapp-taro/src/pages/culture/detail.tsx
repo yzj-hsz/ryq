@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView, RichText } from '@tarojs/components'
 import Taro, { useLoad, useRouter } from '@tarojs/taro'
 import { fetchCultureArticleDetail } from '@/api/services'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './detail.scss'
 
 export default function CultureDetailPage() {
@@ -25,7 +26,7 @@ export default function CultureDetailPage() {
 
   return (
     <View className='sub-page'>
-      <Text className='back' onClick={() => Taro.navigateBack()}>返回</Text>
+      <Text className='back' onClick={() => navigateBackOrRelaunch()}>返回</Text>
       <ScrollView scrollY>
         <Image className='cover' src={formatUrl(article.cover_url)} mode='aspectFill' />
         <View className='body'>

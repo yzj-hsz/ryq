@@ -3,6 +3,7 @@ import { View, Text, ScrollView, RichText, Image } from '@tarojs/components'
 import Taro, { useLoad, useRouter } from '@tarojs/taro'
 import { fetchBannerDetail, fetchHighlightDetail } from '@/api/services'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './rich-detail.scss'
 
 export default function RichDetailPage() {
@@ -37,7 +38,7 @@ export default function RichDetailPage() {
 
   return (
     <View className='rich-page'>
-      <Text className='back' onClick={() => Taro.navigateBack()}>返回</Text>
+      <Text className='back' onClick={() => navigateBackOrRelaunch()}>返回</Text>
       <ScrollView scrollY className='scroll'>
         <Text className='title'>{title}</Text>
         {imageUrl ? <Image className='hero-image' src={formatUrl(imageUrl)} mode='widthFix' /> : null}

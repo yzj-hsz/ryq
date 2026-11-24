@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView, RichText } from '@tarojs/components'
 import Taro, { useLoad, useRouter } from '@tarojs/taro'
 import { fetchExperienceDetail } from '@/api/services'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './detail-page.scss'
 
 export default function ExperienceDetailPage() {
@@ -25,7 +26,7 @@ export default function ExperienceDetailPage() {
 
   return (
     <View className='exp-detail-page'>
-      <Text className='exp-detail-back' onClick={() => Taro.navigateBack()}>返回</Text>
+      <Text className='exp-detail-back' onClick={() => navigateBackOrRelaunch()}>返回</Text>
       <ScrollView scrollY className='exp-detail-scroll'>
         <Image className='exp-detail-cover' src={formatUrl(String(data.cover_url || ''))} mode='aspectFill' />
         <View className='exp-detail-body'>

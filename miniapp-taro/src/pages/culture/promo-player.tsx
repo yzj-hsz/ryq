@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Text, Video } from '@tarojs/components'
 import Taro, { useLoad } from '@tarojs/taro'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './promo-player.scss'
 
 export default function PromoPlayerPage() {
@@ -17,7 +18,7 @@ export default function PromoPlayerPage() {
   return (
     <View className='promo-player-page'>
       <View className='promo-player-bar'>
-        <Text className='promo-player-back' onClick={() => Taro.navigateBack()}>返回</Text>
+        <Text className='promo-player-back' onClick={() => navigateBackOrRelaunch()}>返回</Text>
         <Text className='promo-player-title'>{title}</Text>
       </View>
 

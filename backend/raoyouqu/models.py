@@ -372,7 +372,9 @@ class GiftBoxGoods(db.Model):
     __tablename__ = "gift_box_goods"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False)
-    summary = db.Column(db.String(512))
+    summary = db.Column(db.String(512)) # 基本介绍
+    spec = db.Column(db.String(128)) # 尺寸规格，如 68×68cm
+    material = db.Column(db.String(256)) # 材质，如 桑蚕丝·植物染
     w = db.Column(db.Integer, default=1, nullable=False) # 占位宽（格）
     h = db.Column(db.Integer, default=1, nullable=False) # 占位高（格）
     price = db.Column(db.Float, default=0, nullable=False) # 单价（元）

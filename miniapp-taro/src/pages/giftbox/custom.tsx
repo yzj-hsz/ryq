@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, ScrollView, Button, Switch } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import {
   fetchGiftBoxGoods,
   fetchGiftBoxes,
   postAnalyticsEvent,
   saveMyGiftBox,
 } from '@/api/services'
-import { isLoggedIn } from '@/utils/auth'
+import { fetchMe } from '@/api/auth'
+import { goLoginPage, isGuestUser, isLoggedIn } from '@/utils/auth'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import type { GiftBoxBrief } from '@/api/services'
 import './custom.scss'
 
@@ -18,11 +20,17 @@ interface GiftOption {
   id: number
   name: string
   summary: string
+  spec: string
+  material: string
   w: number
   h: number
   cells: number
   price: number
   color: string
+  productId: number | null
+  productSummary: string
+  productName: string
+  productCover: string
 }
 
 interface PlacedItem extends GiftOption {
@@ -38,16 +46,15 @@ const PALETTE = ['#c48044', '#3d6b50', '#c94d4d', '#5b6e8a', '#9a5f2e', '#7a4a6e
 
 const FALLBACK_BOXES: GiftBoxBrief[] = [
   { id: 0, name: '方形礼盒', box_type: 'square', packing_fee: 0, min_price: 0, sort_order: 0 },
-  { id: 0, name: '圆形礼盒', box_type: 'circle', packing_fee: 0, min_price: 0, sort_order: 1 },
 ]
 
 const FALLBACK_OPTIONS: GiftOption[] = [
-  { goodsId: 101, id: 101, name: 'A·茶染丝巾', summary: '占位 1×1 格', w: 1, h: 1, cells: 1, price: 0, color: '#c48044' },
-  { goodsId: 102, id: 102, name: 'B·茶染茶席', summary: '占位 2×2 格', w: 2, h: 2, cells: 4, price: 0, color: '#3d6b50' },
-  { goodsId: 103, id: 103, name: 'C·高山单枞', summary: '占位 1×1 格', w: 1, h: 1, cells: 1, price: 0, color: '#c94d4d' },
-  { goodsId: 104, id: 104, name: 'D·手作杯垫', summary: '占位 2×1 格', w: 2, h: 1, cells: 2, price: 0, color: '#5b6e8a' },
-  { goodsId: 105, id: 105, name: 'E·非遗书签', summary: '占位 1×2 格', w: 1, h: 2, cells: 2, price: 0, color: '#9a5f2e' },
-  { goodsId: 106, id: 106, name: 'F·文创明信片', summary: '占位 1×1 格', w: 1, h: 1, cells: 1, price: 0, color: '#7a4a6e' },
+  { goodsId: 101, id: 101, name: 'A·茶染丝巾', summary: '植物染桑蚕丝巾，茶汤固色，温润亲肤。', spec: '68×68cm', material: '桑蚕丝·植物染', w: 1, h: 1, cells: 1, price: 0, color: '#c48044', productId: null, productSummary: '', productName: '', productCover: '' },
+  { goodsId: 102, id: 102, name: 'B·茶染茶席', summary: '手工茶染棉麻茶席，吸水耐泡。', spec: '40×60cm', material: '棉麻·茶染', w: 2, h: 2, cells: 4, price: 0, color: '#3d6b50', productId: null, productSummary: '', productName: '', productCover: '' },
+  { goodsId: 103, id: 103, name: 'C·高山单枞', summary: '饶平高山单枞，蜜兰香型。', spec: '8g×6小泡', material: '饶平高山乌龙茶', w: 1, h: 1, cells: 1, price: 0, color: '#c94d4d', productId: null, productSummary: '', productName: '', productCover: '' },
+  { goodsId: 104, id: 104, name: 'D·手作杯垫', summary: '茶染布艺杯垫，隔热防滑。', spec: '直径11cm×2枚', material: '茶染棉布·隔热垫片', w: 2, h: 1, cells: 2, price: 0, color: '#5b6e8a', productId: null, productSummary: '', productName: '', productCover: '' },
+  { goodsId: 105, id: 105, name: 'E·非遗书签', summary: '布马舞纹样书签，硬挺覆膜。', spec: '5×15cm', material: '特种纸·覆膜', w: 1, h: 2, cells: 2, price: 0, color: '#9a5f2e', productId: null, productSummary: '', productName: '', productCover: '' },
+  { goodsId: 106, id: 106, name: 'F·文创明信片', summary: '饶平风物插画明信片，可手写祝福。', spec: '10×15cm', material: '300g铜版纸', w: 1, h: 1, cells: 1, price: 0, color: '#7a4a6e', productId: null, productSummary: '', productName: '', productCover: '' },
 ]
 
 function findSlot(occupancy: boolean[][], w: number, h: number): { x: number; y: number } | null {
@@ -72,7 +79,7 @@ export default function GiftboxCustomPage() {
   const router = useRouter()
   const [lidOpen, setLidOpen] = useState(true)
   const [boxes, setBoxes] = useState<GiftBoxBrief[]>(FALLBACK_BOXES)
-  // 从选盒页带过来的礼盒 id，优先作为计费款式
+  // 固定方形礼盒：不再从选盒页带 id，后端只启用一个，前端直接取方形启用的那款
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null)
   const [options, setOptions] = useState<GiftOption[]>(FALLBACK_OPTIONS)
   const [saving, setSaving] = useState(false)
@@ -84,6 +91,8 @@ export default function GiftboxCustomPage() {
   const [dragKey, setDragKey] = useState<number | null>(null)
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
   const [dragValid, setDragValid] = useState(true)
+  // 登录态预检：none=无 token，guest=访客登录，real=正式用户
+  const [authState, setAuthState] = useState<'unknown' | 'none' | 'guest' | 'real'>('unknown')
   const keySeq = useRef(1)
   // 占位镜像：与 state 同一 tick 更新，校验永远基于最新占位，杜绝连点超限
   const placedRef = useRef<PlacedItem[]>([])
@@ -123,6 +132,25 @@ export default function GiftboxCustomPage() {
     []
   )
 
+  /** 登录态预检：无 token 直接标记 none；有 token 则用 /me 区分访客与正式用户 */
+  const refreshAuthState = async () => {
+    if (!isLoggedIn()) {
+      setAuthState('none')
+      return
+    }
+    try {
+      const me = await fetchMe()
+      setAuthState(isGuestUser(me) ? 'guest' : 'real')
+    } catch {
+      setAuthState('none')
+    }
+  }
+
+  // 每次回到页面都刷新一次，避免访客登录后去登录页走一圈回来状态过期
+  useDidShow(() => {
+    void refreshAuthState()
+  })
+
   // 预热量取盒内层矩形：首触 hitTest 直接命中，不依赖 touchstart 时的异步回调
   useEffect(() => {
     const t = setTimeout(queryBoxRect, 300)
@@ -132,8 +160,6 @@ export default function GiftboxCustomPage() {
 
   useEffect(() => {
     const id = Number(router.params.id)
-    const boxId = Number(router.params.box_id)
-    if (boxId) setSelectedBoxId(boxId)
     void postAnalyticsEvent({
       event_type: 'page_view',
       page_path: '/pages/giftbox/custom',
@@ -142,13 +168,11 @@ export default function GiftboxCustomPage() {
     }).catch(() => {})
     fetchGiftBoxes()
       .then((res) => {
-        const items = res.items || []
+        const items = (res.items || []).filter((b) => b.box_type === 'square')
         if (!items.length) return
         setBoxes(items)
-        // 选盒页带 id 进来：计费款式跟随该礼盒
-        const targetId = Number(router.params.box_id)
-        const target = items.find((b) => b.id === targetId)
-        if (target) setSelectedBoxId(target.id)
+        // 固定礼盒：直接取第一款方形启用礼盒，不再跟随 box_id
+        setSelectedBoxId(items[0].id)
       })
       .catch(() => {})
     fetchGiftBoxGoods()
@@ -160,12 +184,18 @@ export default function GiftboxCustomPage() {
             goodsId: item.id,
             id: item.id,
             name: item.name,
-            summary: item.summary || '文创好物',
+            summary: item.summary || item.product_summary || '文创好物',
+            spec: item.spec || '',
+            material: item.material || '',
             w: item.w,
             h: item.h,
             cells: item.w * item.h,
             price: item.price,
             color: item.color || PALETTE[index % PALETTE.length],
+            productId: item.product_id ?? null,
+            productSummary: item.product_summary || '',
+            productName: item.product_name || '',
+            productCover: item.product_cover_url || '',
           }))
         )
       })
@@ -179,13 +209,14 @@ export default function GiftboxCustomPage() {
   // 拖拽源商品（读 ref 即可，dragPos 变化会触发重渲染）
   const dragSrc = dragKey !== null ? placedRef.current.find((it) => it.key === dragKey) ?? null : null
 
-  // 费用预览：优先用选盒页指定的款式，否则按首个款式兜底
+  // 费用预览：固定方形礼盒，直接取方形第一款
   const priceBox = useMemo(() => {
-    const picked = selectedBoxId != null ? boxes.find((b) => b.id === selectedBoxId) : undefined
-    return picked ?? boxes[0] ?? null
+    const squares = boxes.filter((b) => b.box_type === 'square')
+    const picked = selectedBoxId != null ? squares.find((b) => b.id === selectedBoxId) : undefined
+    return picked ?? squares[0] ?? boxes[0] ?? null
   }, [boxes, selectedBoxId])
-  // 盒内可视形状跟随当前款式，不再由页面内切换
-  const boxType: BoxType = priceBox?.box_type === 'circle' ? 'circle' : 'square'
+  // 固定方形礼盒，不再跟随款式切换
+  const boxType: BoxType = 'square'
   const goodsTotal = useMemo(
     () => Math.round(placed.reduce((sum, p) => sum + (p.price || 0), 0) * 100) / 100,
     [placed]
@@ -195,23 +226,68 @@ export default function GiftboxCustomPage() {
   const minPrice = priceBox?.min_price ?? 0
   const belowMin = placed.length > 0 && totalPrice < minPrice
 
+  const buildLoginRedirect = () => '/pages/giftbox/custom'
+
+  /** 未登录 / 访客拦截：弹窗提示“未登录无法使用此功能”，确认则清访客态并跳登录页 */
+  const interceptGuest = async (): Promise<boolean> => {
+    // true = 已拦截，调用方直接 return
+    if (!isLoggedIn()) {
+      const confirm = await Taro.showModal({
+        title: '请先登录',
+        content: '未登录无法使用此功能，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '稍后再说',
+      })
+      if (confirm.confirm) {
+        goLoginPage(buildLoginRedirect())
+      } else {
+        Taro.showToast({ title: '未登录无法使用此功能', icon: 'none' })
+      }
+      return true
+    }
+    try {
+      const me = await fetchMe()
+      if (!isGuestUser(me)) {
+        setAuthState('real')
+        return false
+      }
+      setAuthState('guest')
+    } catch {
+      setAuthState('none')
+      const confirm = await Taro.showModal({
+        title: '请先登录',
+        content: '未登录无法使用此功能，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '稍后再说',
+      })
+      if (confirm.confirm) {
+        goLoginPage(buildLoginRedirect())
+      } else {
+        Taro.showToast({ title: '未登录无法使用此功能', icon: 'none' })
+      }
+      return true
+    }
+    const confirm = await Taro.showModal({
+      title: '访客受限',
+      content: '未登录无法使用此功能，访客身份不能保存礼盒，是否前往登录？',
+      confirmText: '去登录',
+      cancelText: '稍后再说',
+    })
+    if (confirm.confirm) {
+      goLoginPage(buildLoginRedirect())
+    } else {
+      Taro.showToast({ title: '未登录无法使用此功能', icon: 'none' })
+    }
+    return true
+  }
+
   const handleSave = async () => {
     if (!placed.length || saving) return
     if (belowMin) {
       Taro.showToast({ title: `未达到起售价${minPrice}元`, icon: 'none' })
       return
     }
-    if (!isLoggedIn()) {
-      const confirm = await Taro.showModal({
-        title: '请先登录',
-        content: '保存礼盒需要登录，是否前往登录？',
-        confirmText: '去登录',
-      })
-      if (confirm.confirm) {
-        Taro.navigateTo({ url: '/pages/login/login' })
-      }
-      return
-    }
+    if (await interceptGuest()) return
     const confirm = await Taro.showModal({
       title: '确定保存礼盒',
       content: `${priceBox?.name ?? '礼盒'}：包装费${packingFee}元 + 商品${goodsTotal}元，预计总价${totalPrice}元`,
@@ -228,7 +304,23 @@ export default function GiftboxCustomPage() {
       Taro.showToast({ title: `已保存，预计${res.total_price}元`, icon: 'success' })
       setTimeout(() => Taro.navigateTo({ url: '/pages/giftbox/mine' }), 800)
     } catch (err) {
-      Taro.showToast({ title: err instanceof Error ? err.message : '保存失败', icon: 'none' })
+      const msg = err instanceof Error ? err.message : '保存失败'
+      // token 过期 / 被后端判定未登录：同样提示并跳登录页
+      if (/401|missing_token|invalid_token|user_not_found|wrong_token_type/i.test(msg)) {
+        const confirm = await Taro.showModal({
+          title: '请先登录',
+          content: '未登录无法使用此功能，是否前往登录？',
+          confirmText: '去登录',
+          cancelText: '稍后再说',
+        })
+        if (confirm.confirm) {
+          goLoginPage(buildLoginRedirect())
+        } else {
+          Taro.showToast({ title: '未登录无法使用此功能', icon: 'none' })
+        }
+        return
+      }
+      Taro.showToast({ title: msg, icon: 'none' })
     } finally {
       setSaving(false)
     }
@@ -445,10 +537,22 @@ export default function GiftboxCustomPage() {
   return (
     <View className='gift-page'>
       <View className='gift-topbar'>
-        <Text className='back active-scale' onClick={() => Taro.navigateBack()}>返回</Text>
-        <Text className='gift-title'>礼盒选配</Text>
+        <Text className='back active-scale' onClick={() => navigateBackOrRelaunch('/pages/index/index')}>返回</Text>
+        <Text className='gift-title'>方形礼盒选配</Text>
         <Text className='gift-cap'>{cappedUsed}/{CAPACITY}格</Text>
       </View>
+
+      {/* 访客 / 未登录前置提示：允许继续搭配，点击保存时再拦截跳登录 */}
+      {(authState === 'guest' || authState === 'none') && (
+        <View className='auth-tip-row'>
+          <Text className='auth-tip-text'>
+            {authState === 'guest' ? '当前为访客身份，未登录无法使用保存功能' : '当前未登录，保存礼盒需要先登录'}
+          </Text>
+          <Text className='auth-tip-btn' onClick={() => goLoginPage(buildLoginRedirect())}>
+            去登录
+          </Text>
+        </View>
+      )}
 
       {/* 上半区：礼盒可视化预览 */}
       <View className='preview-zone'>
@@ -459,13 +563,7 @@ export default function GiftboxCustomPage() {
         {priceBox && (
           <View className='picked-box-row'>
             <Text className='picked-box-text'>
-              当前：{priceBox.name} · 包装费¥{packingFee} · 起售¥{minPrice}
-            </Text>
-            <Text
-              className='picked-box-change'
-              onClick={() => Taro.navigateTo({ url: '/pages/giftbox/select' })}
-            >
-              换一款
+              当前：{priceBox.name}（固定方形） · 包装费¥{packingFee} · 起售¥{minPrice}
             </Text>
           </View>
         )}
@@ -526,8 +624,8 @@ export default function GiftboxCustomPage() {
                     className='gift-block-inner'
                     style={{
                       background: p.color,
-                      // 圆形礼盒自动适配圆角：正方形格变圆，长条格变胶囊
-                      borderRadius: boxType === 'circle' ? (p.w === p.h ? '50%' : '999px') : undefined,
+                      // 固定方形礼盒：直角展示
+                      borderRadius: undefined,
                     }}
                   >
                     <Text className='gb-name'>{p.name}</Text>
@@ -581,9 +679,38 @@ export default function GiftboxCustomPage() {
               </View>
               <View className='goods-info'>
                 <Text className='goods-name'>{opt.name}</Text>
-                <Text className='goods-desc'>{opt.summary}</Text>
+                <Text className='goods-desc'>介绍：{opt.summary}</Text>
+                {(opt.spec || opt.material) && (
+                  <Text className='goods-desc spec'>尺寸：{opt.spec || '—'} · 材质：{opt.material || '—'}</Text>
+                )}
+                {opt.productSummary && opt.productSummary !== opt.summary ? (
+                  <Text className='goods-desc sub'>关联商品{opt.productName ? `「${opt.productName}」` : ''}：{opt.productSummary}</Text>
+                ) : null}
                 <Text className='goods-slot'>占位 {opt.w}×{opt.h}（共{opt.cells}格）</Text>
                 <Text className='goods-price'>¥{opt.price}</Text>
+                <View className='goods-links'>
+                  <Text
+                    className='goods-link'
+                    onClick={() =>
+                      Taro.showModal({
+                        title: opt.name,
+                        content: `${opt.summary}${opt.spec ? `\n尺寸：${opt.spec}` : ''}${opt.material ? `\n材质：${opt.material}` : ''}${opt.productSummary && opt.productSummary !== opt.summary ? `\n\n关联商品：${opt.productSummary}` : ''}\n\n占位 ${opt.w}×${opt.h}（共${opt.cells}格）· ¥${opt.price}`,
+                        showCancel: false,
+                        confirmText: '知道了',
+                      })
+                    }
+                  >
+                    查看详情
+                  </Text>
+                  {opt.productId ? (
+                    <Text
+                      className='goods-link'
+                      onClick={() => Taro.navigateTo({ url: `/pages/product/detail?id=${opt.productId}` })}
+                    >
+                      关联商品 ›
+                    </Text>
+                  ) : null}
+                </View>
               </View>
               <Button
                 className={`add-btn ${disabled ? 'disabled' : ''}`}
@@ -612,7 +739,7 @@ export default function GiftboxCustomPage() {
           loading={saving}
           onClick={handleSave}
         >
-          确定保存
+          {authState === 'guest' || authState === 'none' ? '登录后保存' : '确定保存'}
         </Button>
       </View>
     </View>

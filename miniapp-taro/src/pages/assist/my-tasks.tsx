@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { fetchMyTasks, postSubmitTask, uploadFile } from '@/api/services'
 import { formatUrl } from '@/utils/url'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import './my-tasks.scss'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -64,7 +65,7 @@ export default function MyTasksPage() {
     <View className='tasks-page'>
       <View className='hero'>
         <View className='bar'>
-          <Text className='back ghost' onClick={() => Taro.navigateBack()}>返回</Text>
+          <Text className='back ghost' onClick={() => navigateBackOrRelaunch()}>返回</Text>
           <Text className='t'>我的任务</Text>
         </View>
         <View className='hero-card'>

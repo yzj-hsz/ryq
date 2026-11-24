@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { deleteMyGiftBox, fetchMyGiftBoxes } from '@/api/services'
+import { navigateBackOrRelaunch } from '@/utils/navigation'
 import type { SavedGiftBox } from '@/api/services'
 import './mine.scss'
 
@@ -43,11 +44,11 @@ export default function MyGiftBoxPage() {
   return (
     <View className='mine-page'>
       <View className='mine-topbar'>
-        <Text className='back active-scale' onClick={() => Taro.navigateBack()}>返回</Text>
+        <Text className='back active-scale' onClick={() => navigateBackOrRelaunch('/pages/index/index')}>返回</Text>
         <Text className='mine-title'>我的礼盒</Text>
         <Text
           className='new-btn'
-          onClick={() => Taro.navigateTo({ url: '/pages/giftbox/select' })}
+          onClick={() => Taro.navigateTo({ url: '/pages/giftbox/custom' })}
         >
           去选配
         </Text>

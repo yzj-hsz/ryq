@@ -96,12 +96,17 @@ export interface GiftBoxGoods {
   id: number
   name: string
   summary: string
+  spec: string
+  material: string
   w: number
   h: number
   cells: number
   price: number
   color: string | null
   product_id: number | null
+  product_name?: string
+  product_summary?: string
+  product_cover_url?: string
 }
 
 export interface SavedGiftBox {
